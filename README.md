@@ -4,6 +4,12 @@ Electrical Engineer focused on power systems, embedded control, PCB signal integ
 
 I build engineering projects that connect analysis, simulation, hardware-oriented design, and documented implementation. My portfolio includes low-voltage power-system design, high-speed USB 3.0 signal-integrity work, embedded ARM/ESP32 control, FPGA logic design, VLSI layout, DSP-based ECG processing, and Python systems projects.
 
+## Complete Portfolio
+
+Open the full project page here: [Complete Project Portfolio](PROJECTS.md)
+
+Each project has its own repository with explanation, project files, result images, rendered report pages, and public-safe documentation.
+
 ## Featured Projects
 
 | Project | Focus | Technologies |
