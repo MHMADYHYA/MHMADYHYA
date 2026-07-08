@@ -10,6 +10,8 @@ Open the full project page here: [Complete Project Portfolio](PROJECTS.md)
 
 Each project has its own repository with explanation, project files, result images, rendered report pages, and public-safe documentation.
 
+File coverage audit: [Portfolio File Audit](PORTFOLIO_FILE_AUDIT.md)
+
 ## Latest Updates
 
 - ARM Cortex-M Temperature Control Unit: highlighted as an embedded control project with I2C temperature sensing, PWM fan control, Bluetooth UART commands, LCD/LED feedback, interrupt-driven inputs, hardware prototype images, and oscilloscope validation.
