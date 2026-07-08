@@ -10,6 +10,10 @@ Open the full project page here: [Complete Project Portfolio](PROJECTS.md)
 
 Each project has its own repository with explanation, project files, result images, rendered report pages, and public-safe documentation.
 
+## Latest Updates
+
+- Parallel Image Processing Pipeline: added as a current project highlight with multiprocessing workflow, queue-based worker coordination, before/after image-processing results, and full public repository documentation.
+
 ## Featured Projects
 
 | Project | Focus | Technologies |
