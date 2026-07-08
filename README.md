@@ -12,6 +12,7 @@ Each project has its own repository with explanation, project files, result imag
 
 ## Latest Updates
 
+- ARM Cortex-M Temperature Control Unit: highlighted as an embedded control project with I2C temperature sensing, PWM fan control, Bluetooth UART commands, LCD/LED feedback, interrupt-driven inputs, hardware prototype images, and oscilloscope validation.
 - Parallel Image Processing Pipeline: added as a current project highlight with multiprocessing workflow, queue-based worker coordination, before/after image-processing results, and full public repository documentation.
 
 ## Featured Projects
