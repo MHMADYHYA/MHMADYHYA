@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="شعار سامية يحيى: فراشة جناحيها قلبين">
+  <g transform="translate(0 6)">
+    <g transform="translate(87 55) rotate(62) scale(0.64)">
+      <path d="M0 40 C-30 20 -40 0 -40 -14 C-40 -30 -24 -38 -12 -34 C-6 -32 -2 -28 0 -22 C2 -28 6 -32 12 -34 C24 -38 40 -30 40 -14 C40 0 30 20 0 40 Z" fill="#1F4E5F"/>
+    </g>
+    <g transform="translate(33 55) rotate(-62) scale(0.64)">
+      <path d="M0 40 C-30 20 -40 0 -40 -14 C-40 -30 -24 -38 -12 -34 C-6 -32 -2 -28 0 -22 C2 -28 6 -32 12 -34 C24 -38 40 -30 40 -14 C40 0 30 20 0 40 Z" fill="#E07A5F"/>
+    </g>
+    <path d="M60 54 V80" fill="none" stroke="#1C2B33" stroke-width="3.2" stroke-linecap="round"/>
+    <path d="M59 54 Q56 42 50 37" fill="none" stroke="#1C2B33" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M61 54 Q64 42 70 37" fill="none" stroke="#1C2B33" stroke-width="1.8" stroke-linecap="round"/>
+    <circle cx="50" cy="37" r="1.9" fill="#1C2B33"/>
+    <circle cx="70" cy="37" r="1.9" fill="#1C2B33"/>
+  </g>
+</svg>

@@ -1,0 +1,20 @@
+# التبعيات والبناء
+node_modules
+dist
+coverage
+
+# الأسرار: ملف .env ما بينرفع أبداً. .env.example بس بينرفع
+.env
+.env.*
+!.env.example
+
+# ملفات النظام والمحرر
+.DS_Store
+*.local
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# Supabase CLI
+supabase/.temp
+supabase/.branches
