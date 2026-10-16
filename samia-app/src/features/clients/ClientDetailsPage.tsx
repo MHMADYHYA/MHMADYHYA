@@ -11,6 +11,7 @@ import { useClient, useClientAppointments, useUpdateClient } from '../../hooks/q
 import { useNow } from '../../hooks/useNow'
 import { formatShortDayDate } from '../../lib/dates'
 import { toArabicError } from '../../lib/errors'
+import { firstName } from '../../lib/messages'
 import { formatMoney, outstandingTotal } from '../../lib/payments'
 import { formatPhoneForDisplay } from '../../lib/phone'
 import { ClientForm } from './ClientForm'
@@ -94,7 +95,7 @@ export function ClientDetailsPage() {
 
       <Button className="w-full" onClick={() => navigate(`/appointments/new?client=${c.id}`)}>
         <PlusIcon width="18" height="18" />
-        موعد جديد لـ{c.full_name.split(' ')[0]}
+        موعد جديد لـ{firstName(c.full_name)}
       </Button>
 
       <section className="space-y-2">

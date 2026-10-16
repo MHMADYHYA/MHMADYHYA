@@ -22,12 +22,28 @@ export class WhatsAppClickToSend implements MessageSender {
   readonly id = 'whatsapp_click_to_send'
   readonly label = 'واتساب (بكبسة)'
 
-  constructor(private readonly open: (url: string) => unknown = (url) => window.open(url, '_blank', 'noopener')) {}
+  constructor(private readonly open: (url: string) => unknown = defaultOpen) {}
 
   send(message: OutgoingMessage): boolean {
     const result = this.open(buildWhatsAppLink(message.to_phone, message.body))
-    return result !== null
+    return result !== null && result !== undefined
   }
+}
+
+/**
+ * بيفتح الرابط بتبويب جديد. ما منستعمل 'noopener' بالخيارات لأنو وقتها window.open
+ * بيرجع null دايماً (حسب المواصفة) وما منعرف إذا انفتح، فمنصفّر opener بإيدنا.
+ */
+function defaultOpen(url: string): Window | null {
+  const win = window.open(url, '_blank')
+  if (win) {
+    try {
+      win.opener = null
+    } catch {
+      /* بعض المتصفحات بتمنع الوصول */
+    }
+  }
+  return win
 }
 
 export const defaultSender: MessageSender = new WhatsAppClickToSend()

@@ -25,7 +25,8 @@ describe('متغيرات القالب', () => {
     expect(firstName('ليلى حسن محمود')).toBe('ليلى')
     expect(firstName('  ليلى ')).toBe('ليلى')
     expect(responseLink('https://x.com/', 't')).toBe('https://x.com/a/t')
-    expect(responseLink(null, 't')).toBe('/a/t')
+    expect(responseLink(null, 't')).toBe(`${window.location.origin}/a/t`)
+    expect(responseLink('', 't')).toBe(`${window.location.origin}/a/t`)
     const vars = buildTemplateVars(appointment, client, settings)
     expect(vars).toMatchObject({
       الاسم: 'ليلى',

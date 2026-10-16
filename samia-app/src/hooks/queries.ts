@@ -1,5 +1,5 @@
 /** Hooks للبيانات فوق React Query. المفاتيح بمكان واحد عشان الإبطال يكون سهل. */
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import {
   cancelAppointment,
@@ -92,7 +92,11 @@ export function useUpdateClient() {
 export function useAppointmentsInRange(start: Date, end: Date) {
   const s = start.toISOString()
   const e = end.toISOString()
-  return useQuery({ queryKey: keys.appointments(s, e), queryFn: () => fetchAppointmentsInRange(start, end) })
+  return useQuery({
+    queryKey: keys.appointments(s, e),
+    queryFn: () => fetchAppointmentsInRange(start, end),
+    placeholderData: keepPreviousData,
+  })
 }
 
 export function useClientAppointments(clientId: string | undefined) {

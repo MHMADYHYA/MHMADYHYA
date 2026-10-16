@@ -59,6 +59,7 @@ export const EVENT_TYPE_LABELS: Record<string, string> = {
   cancelled: 'تم الإلغاء',
   message_sent: 'انبعتت رسالة',
   payment_changed: 'تغيّر الدفع',
+  slot_taken: 'الزبون حاول يوافق بس الوقت كان محجوز',
 }
 
 export const ACTOR_LABELS: Record<string, string> = {

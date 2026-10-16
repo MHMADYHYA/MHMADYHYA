@@ -72,7 +72,7 @@ export function FollowUpPage() {
                         {kind === 'no_response' && item.inviteSentAt && (
                           <p className="text-xs text-muted">الدعوة انبعتت {timeAgoLabel(item.inviteSentAt, now)}</p>
                         )}
-                        {kind === 'change_requested' && a.client_note && <p className="mt-1 text-sm">كتب: <q>{a.client_note}</q></p>}
+                        {a.client_note && <p className="mt-1 text-sm">{kind === 'change_requested' ? 'كتب: ' : ''}<q>{a.client_note}</q></p>}
                       </div>
                       <StatusBadge status={a.status} />
                     </div>

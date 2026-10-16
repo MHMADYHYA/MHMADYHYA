@@ -60,7 +60,8 @@ async function newPage(browser, db, viewport) {
   page.setDefaultNavigationTimeout(20000)
   page.on('pageerror', (e) => problems.push(`[pageerror] ${e.message}`))
   page.on('console', (m) => {
-    if (m.type() === 'error' && !/realtime|WebSocket|net::ERR|favicon/i.test(m.text())) problems.push(`[console] ${m.text().slice(0, 300)}`)
+    // تحذير flushSync بييجي من @fullcalendar/react مع React 19 بوضع التطوير بس، ومش مشكلة بالتطبيق
+    if (m.type() === 'error' && !/realtime|WebSocket|net::ERR|favicon|flushSync/i.test(m.text())) problems.push(`[console] ${m.text().slice(0, 300)}`)
   })
   await installMockSupabase(page, db)
   return { page, context }

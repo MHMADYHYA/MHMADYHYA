@@ -58,6 +58,8 @@ describe('قواعد سامية', () => {
     expect(statusAfterReschedule('confirmed')).toBe('pending')
     expect(statusAfterReschedule('declined')).toBe('pending')
     expect(() => statusAfterReschedule('cancelled')).toThrow()
+    expect(() => statusAfterReschedule('attended')).toThrow()
+    expect(() => statusAfterReschedule('no_show')).toThrow()
   })
 
   it('حضر / ما حضر بس بعد وقت الموعد ومش ملغي', () => {
@@ -89,6 +91,13 @@ describe('قواعد سامية', () => {
       'set_status',
     ])
     expect(availableAdminActions({ starts_at: past, status: 'cancelled' }, now)).toEqual(['set_status'])
+    expect(availableAdminActions({ starts_at: past, status: 'attended' }, now)).toEqual([
+      'cancel',
+      'cancel_and_new',
+      'mark_attended',
+      'mark_no_show',
+      'set_status',
+    ])
   })
 
   it('التذكيرات بس لـ pending وconfirmed', () => {

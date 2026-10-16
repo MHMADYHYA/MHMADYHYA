@@ -24,7 +24,8 @@ export function ClientsPage() {
     const q = search.trim().toLowerCase()
     const list = clients.data ?? []
     if (!q) return list
-    return list.filter((c) => c.full_name.toLowerCase().includes(q) || c.phone.includes(q.replace(/\D/g, '')))
+    const digits = q.replace(/\D/g, '')
+    return list.filter((c) => c.full_name.toLowerCase().includes(q) || (digits.length >= 3 && c.phone.includes(digits)))
   }, [clients.data, search])
 
   return (

@@ -48,14 +48,22 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close()
   const url = (event.notification.data as { url?: string } | undefined)?.url ?? '/'
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (list) => {
-      for (const client of list) {
-        if ('focus' in client) {
-          await client.navigate(url)
-          return client.focus()
+    (async () => {
+      const list = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      const sameOrigin = list.filter((c) => c.url.startsWith(self.location.origin))
+      for (const client of sameOrigin) {
+        try {
+          if ('navigate' in client) await client.navigate(url)
+          return await client.focus()
+        } catch {
+          // نجرّب النافذة اللي بعدها
         }
       }
-      return self.clients.openWindow(url)
-    }),
+      try {
+        return await self.clients.openWindow(url)
+      } catch {
+        return undefined
+      }
+    })(),
   )
 })

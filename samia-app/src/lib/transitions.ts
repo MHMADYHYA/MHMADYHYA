@@ -70,8 +70,9 @@ export function needsAttendanceMark(a: TimedAppointment, now: Date): boolean {
   return hasStarted(a, now) && (a.status === 'pending' || a.status === 'confirmed' || a.status === 'change_requested')
 }
 
+/** تغيير الوقت ممنوع للملغي وللجلسات اللي خلصت (حضر / ما حضر) */
 export function canReschedule(a: TimedAppointment): boolean {
-  return a.status !== 'cancelled'
+  return a.status !== 'cancelled' && a.status !== 'attended' && a.status !== 'no_show'
 }
 
 export function canCancel(a: TimedAppointment): boolean {
@@ -81,6 +82,7 @@ export function canCancel(a: TimedAppointment): boolean {
 /** تغيير الوقت بيرجّع الحالة "بانتظار رد" */
 export function statusAfterReschedule(status: AppointmentStatus): AppointmentStatus {
   if (status === 'cancelled') throw new Error('appointment_cancelled')
+  if (status === 'attended' || status === 'no_show') throw new Error('appointment_finished')
   return 'pending'
 }
 

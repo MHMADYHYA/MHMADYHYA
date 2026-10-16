@@ -330,7 +330,7 @@ export async function getPublicAppointment(token: string): Promise<PublicAppoint
 
 export type RespondResult =
   | ({ ok: true } & PublicAppointment)
-  | { ok: false; error: 'invalid_action' | 'not_found' | 'cancelled' | 'expired' | 'not_allowed' }
+  | { ok: false; error: 'invalid_action' | 'not_found' | 'cancelled' | 'expired' | 'not_allowed' | 'slot_taken' }
 
 export async function respondToAppointment(token: string, action: ClientAction, note: string | null): Promise<RespondResult> {
   const { data, error } = await requireSupabase().rpc('respond_to_appointment', {

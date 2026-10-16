@@ -6,6 +6,7 @@ import { SearchIcon } from '../../components/Icons'
 import type { AppointmentStatus, AppointmentWithClient } from '../../lib/database.types'
 import { dayKey, formatShortDayDate, relativeDayLabel } from '../../lib/dates'
 import { APPOINTMENT_STATUSES, STATUS_LABELS } from '../../lib/status'
+import { sessionsCountText } from '../../../supabase/functions/_shared/notify-core'
 
 export type ListPeriod = 'upcoming' | 'this_week' | 'this_month' | 'past'
 
@@ -29,18 +30,13 @@ interface Props {
   now: Date
 }
 
-function sessionsCount(n: number): string {
-  if (n === 1) return 'جلسة وحدة'
-  if (n === 2) return 'جلستين'
-  if (n <= 10) return `${n} جلسات`
-  return `${n} جلسة`
-}
-
 /** قائمة المواعيد المجمّعة حسب اليوم مع فلاتر (مكوّن خاص، مش عرض القائمة تبع FullCalendar) */
 export function AppointmentList({ appointments, filters, onFiltersChange, now }: Props) {
   const groups = useMemo(() => {
     const q = filters.search.trim().toLowerCase()
+    const nowMs = now.getTime()
     const filtered = appointments.filter((a) => {
+      if (filters.period === 'past' && new Date(a.starts_at).getTime() > nowMs) return false
       if (filters.status !== 'all' && a.status !== filters.status) return false
       if (q && !a.clients.full_name.toLowerCase().includes(q) && !a.clients.phone.includes(q)) return false
       return true
@@ -57,7 +53,7 @@ export function AppointmentList({ appointments, filters, onFiltersChange, now }:
       map.get(key)!.push(a)
     }
     return [...map.entries()]
-  }, [appointments, filters])
+  }, [appointments, filters, now])
 
   return (
     <div className="space-y-3">
@@ -113,7 +109,7 @@ export function AppointmentList({ appointments, filters, onFiltersChange, now }:
                   <span className="ms-2 text-sm font-normal text-muted">{formatShortDayDate(items[0].starts_at)}</span>
                 )}
               </h3>
-              <span className="text-sm text-muted">{sessionsCount(items.length)}</span>
+              <span className="text-sm text-muted">{sessionsCountText(items.length)}</span>
             </div>
             <div className="space-y-2">
               {items.map((a) => (

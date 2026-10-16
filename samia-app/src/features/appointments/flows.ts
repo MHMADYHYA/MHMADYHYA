@@ -12,16 +12,24 @@ import {
 } from '../../lib/api'
 import type { AppointmentWithClient, ClientRow, SettingsRow } from '../../lib/database.types'
 import { formatTime, wallClockIso } from '../../lib/dates'
+import { env } from '../../lib/env'
 import { AppError, isConflictError } from '../../lib/errors'
 import { buildMessages } from '../../lib/messages'
 import { normalizePhone } from '../../lib/phone'
 import { generatePublicToken } from '../../lib/tokens'
+import { canReschedule } from '../../lib/transitions'
 
 export interface MeetingInfo {
   meeting_url: string | null
   zoom_meeting_id: string | null
   /** تنبيه لسامية إذا الزوم ما اشتغل */
   warning: string | null
+}
+
+/** الإعدادات مع رابط التطبيق معبّى من .env إذا سامية لسا ما حفظته */
+export function withLinkFallback(settings: SettingsRow): SettingsRow {
+  if (settings.public_base_url?.trim()) return settings
+  return { ...settings, public_base_url: env.publicBaseUrl || null }
 }
 
 export function conflictMessage(conflicts: { clients: { full_name: string }; starts_at: string }[]): string {
@@ -110,25 +118,29 @@ export interface FlowResult {
 
 export async function createAppointmentFlow(
   input: NewAppointmentInput,
-  settings: SettingsRow,
+  rawSettings: SettingsRow,
   clients: ClientRow[],
   now: Date,
 ): Promise<FlowResult> {
-  // 1) الزبون
-  let client: ClientRow
+  const settings = withLinkFallback(rawSettings)
+
+  // 1) التحقق من المدخلات قبل أي كتابة
+  let newClient: { full_name: string; phone: string } | null = null
+  let existingClient: ClientRow | null = null
   if (input.client.mode === 'new') {
     const phone = normalizePhone(input.client.phone)
     if (!phone.ok) throw new AppError(phone.error)
     const name = input.client.full_name.trim()
     if (!name) throw new AppError('اكتب اسم الزبون')
-    client = await createClientRecord({ full_name: name, phone: phone.phone })
+    // إذا في زبون بنفس الرقم منستعمله بدل ما نكرّره
+    existingClient = clients.find((c) => c.phone === phone.phone) ?? null
+    if (!existingClient) newClient = { full_name: name, phone: phone.phone }
   } else {
     const found = clients.find((c) => c.id === (input.client as { id: string }).id)
     if (!found) throw new AppError('اختار زبون')
-    client = found
+    existingClient = found
   }
 
-  // 2) المرافق
   let companionPhone: string | null = null
   let companionName: string | null = null
   if (input.has_companion) {
@@ -139,9 +151,12 @@ export async function createAppointmentFlow(
     companionName = input.companion_name.trim()
   }
 
-  // 3) التضارب
+  // 2) التضارب (قبل إنشاء زبون أو اجتماع زوم)
   const end = new Date(input.starts_at.getTime() + input.duration_min * 60_000)
   await assertNoConflict(input.starts_at, end)
+
+  // 3) الزبون
+  const client: ClientRow = existingClient ?? (await createClientRecord(newClient!))
 
   // 4) الزوم
   const meeting = await createMeeting(input.starts_at, input.duration_min, settings)
@@ -180,6 +195,10 @@ export async function createAppointmentFlow(
     })
     return { id, warning: meeting.warning }
   } catch (err) {
+    // الحفظ فشل: ما منخلي اجتماع زوم يتيم
+    if (meeting.zoom_meeting_id) {
+      await invokeZoom('delete', { meeting_id: meeting.zoom_meeting_id }).catch(() => null)
+    }
     if (isConflictError((err as AppError).cause ?? err)) {
       const conflicts = await findConflicts(input.starts_at, end)
       throw new AppError(conflicts.length ? conflictMessage(conflicts) : 'في موعد ثاني بنفس الوقت.')
@@ -192,9 +211,11 @@ export async function rescheduleFlow(
   a: AppointmentWithClient,
   starts_at: Date,
   duration_min: number,
-  settings: SettingsRow,
+  rawSettings: SettingsRow,
   now: Date,
 ): Promise<FlowResult> {
+  const settings = withLinkFallback(rawSettings)
+  if (!canReschedule(a)) throw new AppError('هاد الموعد خلص (حضر / ما حضر). غيّري الحالة أول إذا بدك تعدّلي وقته.')
   const end = new Date(starts_at.getTime() + duration_min * 60_000)
   await assertNoConflict(starts_at, end, a.id)
   const meeting = await updateMeeting(a, starts_at, duration_min, settings)
@@ -235,10 +256,10 @@ export async function rescheduleFlow(
 export async function cancelFlow(
   a: AppointmentWithClient,
   reason: string,
-  settings: SettingsRow,
+  rawSettings: SettingsRow,
   now: Date,
 ): Promise<FlowResult> {
-  const zoomWarning = await deleteMeeting(a)
+  const settings = withLinkFallback(rawSettings)
   const cancel_reason = reason.trim() || null
   const messages = buildMessages(
     'cancel',
@@ -255,6 +276,8 @@ export async function cancelFlow(
     settings,
     now,
   )
+  // الإلغاء بقاعدة البيانات أول، وبعدين حذف اجتماع الزوم (إذا فشل الحذف الموعد بيضل ملغي والرابط القديم بس بيضل)
   await cancelAppointment(a.id, cancel_reason, messages)
+  const zoomWarning = await deleteMeeting(a)
   return { id: a.id, warning: zoomWarning }
 }

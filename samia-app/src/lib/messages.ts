@@ -43,8 +43,13 @@ export function firstName(fullName: string): string {
   return fullName.trim().split(/\s+/)[0] ?? ''
 }
 
+/**
+ * رابط الرد: من إعدادات التطبيق، وإذا فاضية من رابط الصفحة الحالية (آخر حل).
+ * رابط نسبي بدون موقع ما بينفتح من الواتساب.
+ */
 export function responseLink(baseUrl: string | null, token: string): string {
-  const base = (baseUrl ?? '').trim().replace(/\/+$/, '')
+  let base = (baseUrl ?? '').trim().replace(/\/+$/, '')
+  if (!base && typeof window !== 'undefined' && window.location?.origin) base = window.location.origin
   return `${base}/a/${token}`
 }
 

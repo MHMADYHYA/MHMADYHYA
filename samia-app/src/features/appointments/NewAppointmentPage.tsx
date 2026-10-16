@@ -100,7 +100,8 @@ export function NewAppointmentPage() {
     const q = clientSearch.trim().toLowerCase()
     const list = clients.data ?? []
     if (!q) return list.slice(0, 8)
-    return list.filter((c) => c.full_name.toLowerCase().includes(q) || c.phone.includes(q.replace(/\D/g, ''))).slice(0, 8)
+    const digits = q.replace(/\D/g, '')
+    return list.filter((c) => c.full_name.toLowerCase().includes(q) || (digits.length >= 3 && c.phone.includes(digits))).slice(0, 8)
   }, [clients.data, clientSearch])
 
   const create = useMutation({

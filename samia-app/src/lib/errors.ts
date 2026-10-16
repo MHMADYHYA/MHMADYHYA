@@ -43,6 +43,7 @@ export function toArabicError(err: unknown, fallback = 'صار خطأ غير م�
   if (e.code === '23503') return 'ما بنقدر نحذف هاد العنصر لأنه مرتبط بمواعيد.'
   if (e.code === '23505') return 'هاد العنصر موجود من قبل.'
   if (/appointment_cancelled/.test(message)) return 'الموعد ملغي، ما بنقدر نغيّر وقته. عيّن موعد جديد.'
+  if (/appointment_finished/.test(message)) return 'هاد الموعد خلص (حضر / ما حضر)، ما بنقدر نغيّر وقته.'
   if (/not_found|P0002/.test(message)) return 'الموعد مش موجود.'
   if (/Invalid login credentials/i.test(message)) return 'الإيميل أو كلمة السر غلط.'
   if (/Email not confirmed/i.test(message)) return 'الإيميل لسا مش مأكّد.'

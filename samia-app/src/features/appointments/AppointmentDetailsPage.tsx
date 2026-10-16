@@ -26,6 +26,7 @@ import { useNow } from '../../hooks/useNow'
 import type { AppointmentEventRow, OutboxMessageRow } from '../../lib/database.types'
 import { durationLabel, formatDateTime, formatDayAndDate, formatTime, relativeDayLabel, timeAgoLabel } from '../../lib/dates'
 import { toArabicError } from '../../lib/errors'
+import { firstName as firstNameOf } from '../../lib/messages'
 import { formatMoney } from '../../lib/payments'
 import { formatPhoneForDisplay } from '../../lib/phone'
 import {
@@ -144,7 +145,7 @@ export function AppointmentDetailsPage() {
     )
   }
 
-  const firstName = a.clients.full_name.split(' ')[0]
+  const firstName = firstNameOf(a.clients.full_name)
 
   return (
     <div className="space-y-4">

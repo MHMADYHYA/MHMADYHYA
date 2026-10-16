@@ -18,16 +18,18 @@ import {
   startOfWeekApp,
   wallClockLocalInput,
 } from '../../lib/dates'
+import { arabicCount, messagesCountText } from '../../../supabase/functions/_shared/notify-core'
 import { AppointmentList, type ListFilters } from './AppointmentList'
 import { CalendarGrid } from './CalendarGrid'
 
 type View = 'day' | 'week' | 'list'
 
 function messagesText(n: number) {
-  return n === 1 ? 'رسالة وحدة لازم تنبعت' : n === 2 ? 'رسالتين لازم ينبعتوا' : n <= 10 ? `${n} رسائل لازم تنبعت` : `${n} رسالة لازم تنبعت`
+  return `${messagesCountText(n)} لازم ${n === 2 ? 'ينبعتوا' : 'تنبعت'}`
 }
 function followUpText(n: number) {
-  return n === 1 ? 'موعد واحد بده متابعة' : n === 2 ? 'موعدين بدهم متابعة' : n <= 10 ? `${n} مواعيد بدها متابعة` : `${n} موعد بده متابعة`
+  const count = arabicCount(n, { one: 'موعد واحد', two: 'موعدين', few: 'مواعيد', many: 'موعد' })
+  return `${count} ${n === 1 || n > 10 ? 'بده' : n === 2 ? 'بدهم' : 'بدها'} متابعة`
 }
 
 export function CalendarPage() {
@@ -57,7 +59,8 @@ export function CalendarPage() {
         return { start, end: addMonthsApp(start, 1) }
       }
       case 'past':
-        return { start: addDaysApp(today, -365), end: now }
+        // النهاية = آخر اليوم عشان مفتاح الاستعلام ما يتغير كل دقيقة؛ الفلترة بالوقت الحالي جوا القائمة
+        return { start: addDaysApp(today, -365), end: endOfDayApp(now) }
     }
   }, [view, anchor, filters.period, now])
 

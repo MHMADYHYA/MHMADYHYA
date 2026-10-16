@@ -342,6 +342,36 @@ describe('صفحة الزبون العامة', () => {
     expect(r.respond_to_appointment).toEqual({ ok: false, error: 'invalid_action' })
   })
 
+  it('رافض بده يوافق بعد ما انحجز الوقت لحدا ثاني → slot_taken وطلب تغيير', async () => {
+    const token = 'tok_' + 'e'.repeat(39)
+    const id = await createAppointment('2030-10-01T08:00:00Z', 45, { public_token: token })
+    await db.asAnon(`select respond_to_appointment($1, 'decline', null)`, [token])
+    // الوقت تحرّر، سامية حجزته لزبون ثاني
+    const otherClient = await createClient('زبون ثاني', '972509999999')
+    await createAppointment('2030-10-01T08:00:00Z', 45, { client_id: otherClient })
+    const [r] = await db.asAnon<{ respond_to_appointment: Record<string, unknown> }>(
+      `select respond_to_appointment($1, 'confirm', null)`,
+      [token],
+    )
+    expect(r.respond_to_appointment).toEqual({ ok: false, error: 'slot_taken' })
+    const [a] = await db.root<{ status: string; client_note: string }>(`select status, client_note from appointments where id = $1`, [id])
+    expect(a.status).toBe('declined')
+    expect(a.client_note).toContain('انحجز')
+    const events = await db.root<{ type: string; actor: string }>(
+      `select type, actor from appointment_events where appointment_id = $1 order by created_at desc limit 1`,
+      [id],
+    )
+    expect(events[0]).toEqual({ type: 'slot_taken', actor: 'client' })
+  })
+
+  it('ما في تغيير وقت لجلسة خلصت (حضر / ما حضر)', async () => {
+    const id = await createAppointment('2030-11-01T08:00:00Z')
+    await db.asAdmin(adminId, `update appointments set status = 'attended' where id = $1`, [id])
+    await expect(
+      db.asAdmin(adminId, `select admin_reschedule_appointment($1, '2030-11-02T08:00:00Z', 45, null, null, '[]'::jsonb)`, [id]),
+    ).rejects.toThrow(/appointment_finished/)
+  })
+
   it('anon ما بيقدر ينادي دوال الإدارة', async () => {
     await expect(db.asAnon(`select admin_cancel_appointment(gen_random_uuid(), null, '[]'::jsonb)`)).rejects.toThrow(
       /permission denied/,

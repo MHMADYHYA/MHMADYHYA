@@ -123,7 +123,9 @@ export function PublicAppointmentPage() {
         ? 'انتهى موعد الجلسة.'
         : respond.data.error === 'cancelled'
           ? 'الجلسة انلغت.'
-          : 'ما قدرنا نسجّل ردك. جرّب مرة ثانية.'
+          : respond.data.error === 'slot_taken'
+            ? 'هاد الوقت ما عاد متاح. سجّلنا إنك بدك موعد، وسامية رح تتواصل معك.'
+            : 'ما قدرنا نسجّل ردك. جرّب مرة ثانية.'
       : respond.error
         ? toArabicError(respond.error)
         : null

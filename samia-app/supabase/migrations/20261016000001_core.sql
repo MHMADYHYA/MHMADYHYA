@@ -462,6 +462,9 @@ begin
   if v_old.status = 'cancelled' then
     raise exception 'appointment_cancelled' using errcode = 'P0001';
   end if;
+  if v_old.status in ('attended', 'no_show') then
+    raise exception 'appointment_finished' using errcode = 'P0001';
+  end if;
 
   update public.appointments
   set starts_at = p_starts_at,
@@ -608,11 +611,24 @@ begin
 
   perform set_config('app.actor', 'client', true);
 
-  update public.appointments
-  set status = v_new,
-      responded_at = now(),
-      client_note = case when p_action = 'change' then v_note else null end
-  where id = v_appt.id;
+  begin
+    update public.appointments
+    set status = v_new,
+        responded_at = now(),
+        client_note = case when p_action = 'change' then v_note else null end
+    where id = v_appt.id;
+  exception
+    when exclusion_violation then
+      -- الزبون كان رافض، سامية حجزت الوقت لحدا ثاني، وهلأ بده يوافق: الوقت ما عاد متاح.
+      -- الحالة بتضل "رافض" (أي حالة ثانية بتحجز الوقت)، ومنسجّل ملاحظة وحدث عشان سامية تشوفه بالمتابعة.
+      update public.appointments
+      set responded_at = now(),
+          client_note = 'حاول/ت يوافق بس الوقت انحجز لحدا ثاني'
+      where id = v_appt.id;
+      insert into public.appointment_events (appointment_id, actor, type, from_status, to_status, data)
+      values (v_appt.id, 'client', 'slot_taken', v_appt.status::text, v_appt.status::text, jsonb_build_object('action', p_action));
+      return jsonb_build_object('ok', false, 'error', 'slot_taken');
+  end;
 
   return jsonb_build_object('ok', true) || public.get_public_appointment(p_token);
 end;
