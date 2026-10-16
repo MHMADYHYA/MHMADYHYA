@@ -65,3 +65,53 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-butterfly-rise { animation: none; }
 }
+
+/* FullCalendar: تطويع الألوان على الهوية */
+.fc {
+  --fc-border-color: var(--color-border);
+  --fc-page-bg-color: var(--color-surface);
+  --fc-neutral-bg-color: var(--color-page-tint);
+  --fc-today-bg-color: color-mix(in srgb, var(--color-primary-soft) 55%, transparent);
+  --fc-now-indicator-color: var(--color-coral-strong);
+  --fc-event-border-color: transparent;
+  --fc-highlight-color: color-mix(in srgb, var(--color-primary-soft) 70%, transparent);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+}
+.fc .fc-timegrid-slot {
+  height: 2.6rem;
+}
+.fc .fc-timegrid-slot-label-cushion,
+.fc .fc-col-header-cell-cushion {
+  color: var(--color-muted);
+  font-weight: 400;
+  padding: 4px 6px;
+}
+.fc .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+.fc .fc-timegrid-event {
+  border-radius: 10px;
+  padding: 0;
+  box-shadow: none;
+  border: 1px solid transparent;
+}
+.fc .fc-timegrid-event .fc-event-main {
+  padding: 4px 6px;
+}
+.fc .fc-timegrid-event.fc-event-mirror {
+  background: var(--color-primary-soft);
+}
+.fc .fc-v-event .fc-event-main { color: inherit; }
+.fc .fc-timegrid-col.fc-day-today { background: var(--fc-today-bg-color); }
+.fc .fc-timegrid-now-indicator-line { border-width: 2px 0 0; }
+.fc .fc-scrollgrid { border-radius: 16px; overflow: hidden; }
+.fc .fc-timegrid-axis-cushion { color: var(--color-muted); }
+.fc-status-pending { background: var(--color-status-pending); color: var(--color-status-pending-fg); border-color: color-mix(in srgb, var(--color-status-pending-fg) 25%, transparent) !important; }
+.fc-status-confirmed { background: var(--color-status-confirmed); color: var(--color-status-confirmed-fg); border-color: color-mix(in srgb, var(--color-status-confirmed-fg) 25%, transparent) !important; }
+.fc-status-declined { background: var(--color-status-declined); color: var(--color-status-declined-fg); border-color: color-mix(in srgb, var(--color-status-declined-fg) 25%, transparent) !important; }
+.fc-status-change_requested { background: var(--color-status-change); color: var(--color-status-change-fg); border-color: color-mix(in srgb, var(--color-status-change-fg) 25%, transparent) !important; }
+.fc-status-cancelled { background: var(--color-status-cancelled); color: var(--color-status-cancelled-fg); text-decoration: line-through; opacity: 0.8; }
+.fc-status-attended { background: var(--color-status-attended); color: var(--color-status-attended-fg); border-color: color-mix(in srgb, var(--color-status-attended-fg) 25%, transparent) !important; }
+.fc-status-no_show { background: var(--color-status-no-show); color: var(--color-status-no-show-fg); border-color: color-mix(in srgb, var(--color-status-no-show-fg) 25%, transparent) !important; }
