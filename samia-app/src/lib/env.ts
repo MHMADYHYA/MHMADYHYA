@@ -6,6 +6,8 @@ export interface AppEnv {
   supabaseUrl: string
   supabaseAnonKey: string
   publicBaseUrl: string
+  /** المفتاح العام للتنبيهات (VAPID)، اختياري لحد المرحلة 4 */
+  vapidPublicKey: string
   /** أسماء المتغيرات الناقصة أو غير الصالحة، فاضية إذا كل إشي تمام */
   missing: string[]
 }
@@ -25,13 +27,14 @@ export function readEnv(source: EnvSource = import.meta.env as EnvSource): AppEn
   const supabaseUrl = (source.VITE_SUPABASE_URL ?? '').trim().replace(/\/+$/, '')
   const supabaseAnonKey = (source.VITE_SUPABASE_ANON_KEY ?? '').trim()
   const publicBaseUrl = (source.VITE_PUBLIC_BASE_URL ?? '').trim().replace(/\/+$/, '')
+  const vapidPublicKey = (source.VITE_VAPID_PUBLIC_KEY ?? '').trim()
 
   const missing: string[] = []
   if (!supabaseUrl || !isHttpUrl(supabaseUrl)) missing.push('VITE_SUPABASE_URL')
   if (!supabaseAnonKey) missing.push('VITE_SUPABASE_ANON_KEY')
   if (!publicBaseUrl || !isHttpUrl(publicBaseUrl)) missing.push('VITE_PUBLIC_BASE_URL')
 
-  return { supabaseUrl, supabaseAnonKey, publicBaseUrl, missing }
+  return { supabaseUrl, supabaseAnonKey, publicBaseUrl, vapidPublicKey, missing }
 }
 
 export const env: AppEnv = readEnv()
