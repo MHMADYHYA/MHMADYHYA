@@ -93,9 +93,9 @@ VITE_PUBLIC_BASE_URL=http://localhost:5173
 
 ---
 
-## لاحقاً (المرحلة 1): ربط Supabase CLI
+## الخطوة 6: ارفعي قاعدة البيانات (Supabase CLI)
 
-مش لازم تعمل هاد هلأ. بس للمعلومة: بالمرحلة 1 رح نحتاج نرفع جداول قاعدة البيانات، وهاد بيصير بأوامر من الـ Terminal:
+جداول التطبيق وصلاحياته موجودة بملفات `supabase/migrations/`. بترفعيهم مرة وحدة بأوامر من الـ Terminal جوا مجلد `samia-app`:
 
 ```
 npx supabase login
@@ -103,7 +103,37 @@ npx supabase link --project-ref <معرّف-المشروع>
 npx supabase db push
 ```
 
-**معرّف المشروع (project ref)** هو الجزء اللي قبل `.supabase.co` بالرابط. مثلاً إذا الرابط `https://abcdefghijklmnop.supabase.co` فالمعرّف هو `abcdefghijklmnop`. أمر `link` رح يطلب **Database Password** اللي حفظتها بالخطوة 2.
+- `login` بيفتح المتصفح عشان توافقي.
+- **معرّف المشروع (project ref)** هو الجزء اللي قبل `.supabase.co` بالرابط. مثلاً إذا الرابط `https://abcdefghijklmnop.supabase.co` فالمعرّف هو `abcdefghijklmnop`.
+- `link` رح يطلب **Database Password** اللي حفظتيها بالخطوة 2.
+- `db push` بينشئ الجداول. لازم يطلع بالآخر "Finished supabase db push".
+
+> كل ما يطلع تحديث جديد للتطبيق فيه ملفات جديدة بـ `supabase/migrations/`، شغّلي `npx supabase db push` مرة ثانية.
+
+---
+
+## الخطوة 7: اعملي حساب سامية
+
+التسجيل الجديد مسكّر، فالحساب بينعمل بإيدك من لوحة Supabase (مرة وحدة):
+
+1. **Authentication** ← **Users** ← **Add user** ← **Create new user**.
+2. الإيميل وكلمة سر قوية (8 أحرف على الأقل). فعّلي **Auto Confirm User**.
+3. اكبسي **Create user**.
+4. **أول مستخدم بينعمل بيصير المشرف تلقائياً.** أي مستخدم ثاني بينعمل بعده ما بيقدر يدخل التطبيق.
+
+جرّبي: افتحي http://localhost:5173 وسجّلي دخول بالإيميل وكلمة السر. لازم تفتح صفحة التقويم.
+
+> إذا بدك تغيّري المشرف لاحقاً: SQL Editor ← `select * from public.admins;` بتشوفي المستخدم الحالي، وبتقدري تحذفيه وتضيفي `user_id` ثاني من جدول `auth.users`.
+
+---
+
+## الخطوة 8: روابط الدخول المسموحة
+
+عشان رابط "نسيت كلمة السر" يرجّعك للتطبيق:
+
+1. **Authentication** ← **URL Configuration**.
+2. **Site URL:** محلياً `http://localhost:5173`، وبعد الرفع على الإنترنت رابط الموقع الحقيقي (انظر `DEPLOY.md`).
+3. **Redirect URLs:** أضيفي `http://localhost:5173/**` ولاحقاً `https://<رابط-الموقع>/**`.
 
 ---
 
