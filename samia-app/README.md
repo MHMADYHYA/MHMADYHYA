@@ -121,7 +121,7 @@ npm test
 | `npm test` | يشغّل كل الاختبارات مرة واحدة |
 | `npm run test:watch` | يشغّل الاختبارات ويعيدها مع كل تغيير |
 | `npm run typecheck` | يفحص أخطاء TypeScript |
-| `npm run build` | يبني نسخة الإنتاج بمجلد `dist/` (Cloudflare Pages بيشغّله لحاله) |
+| `npm run build` | يبني نسخة الإنتاج بمجلد `dist/` (قبل الرفع على Cloudflare Pages، انظر `docs/DEPLOY.md`) |
 | `npm run preview` | يعرض نسخة الإنتاج محلياً |
 | `npm run vapid` | يولّد مفاتيح التنبيهات (مرة وحدة) |
 | `npx supabase db push` | يرفع جداول قاعدة البيانات على Supabase |
@@ -134,7 +134,7 @@ npm test
 
 ```
 samia-app/
-├── public/              أيقونات التطبيق، _redirects و_headers لـ Cloudflare
+├── public/              أيقونات التطبيق و_headers لـ Cloudflare (بدون _redirects: Pages بيرجّع index.html لحاله)
 ├── src/
 │   ├── app/             الهيكل العام (الهيدر، شريط التنقل، زر +)
 │   ├── components/      مكوّنات الواجهة المشتركة

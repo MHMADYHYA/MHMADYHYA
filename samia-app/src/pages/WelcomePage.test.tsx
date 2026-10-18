@@ -1,7 +1,13 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { STATUS_LABELS } from '../lib/status'
 import { WelcomePage } from './WelcomePage'
+
+// الاختبار ما بيعتمد على ملف .env المحلي: بنثبّت البيئة على "كل المتغيرات ناقصة"
+vi.mock('../lib/env', async () => {
+  const actual = await vi.importActual<typeof import('../lib/env')>('../lib/env')
+  return { ...actual, env: actual.readEnv({}) }
+})
 
 describe('WelcomePage (المرحلة 0)', () => {
   it('بتعرض التحية والتاريخ بتوقيت القدس', () => {

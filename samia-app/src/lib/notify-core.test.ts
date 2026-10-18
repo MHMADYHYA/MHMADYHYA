@@ -19,20 +19,33 @@ describe('الساعة المحلية', () => {
     expect(localClock(new Date('2026-12-15T06:00:00Z'), TZ)).toEqual({ date: '2026-12-15', minutes: 8 * 60 })
     expect(localClock(new Date('2026-10-20T22:30:00Z'), TZ)).toEqual({ date: '2026-10-21', minutes: 90 })
   })
-
-  it('zonedWallClockToUtc بيطابق @date-fns/tz حتى حول تغيير التوقيت', () => {
+  it('zonedWallClockToUtc بيطابق @date-fns/tz بالأوقات العادية وحول تغيير التوقيت', () => {
     const cases: [number, number, number, number, number][] = [
       [2026, 10, 20, 8, 0],
       [2026, 12, 15, 8, 0],
-      [2026, 10, 25, 1, 30], // ليلة الانتقال للشتوي
-      [2026, 10, 25, 3, 0],
-      [2026, 3, 27, 3, 0], // الانتقال للصيفي
+      [2026, 10, 25, 0, 0], // ليلة الانتقال للشتوي، قبل التغيير
+      [2026, 10, 25, 3, 0], // وبعده
+      [2026, 3, 27, 1, 59], // الانتقال للصيفي، قبل القفزة
+      [2026, 3, 27, 3, 0], // وبعدها
       [2027, 1, 1, 0, 0],
     ]
     for (const [y, m, d, h, mi] of cases) {
       const expected = new TZDate(y, m - 1, d, h, mi, 0, TZ).getTime()
       expect(zonedWallClockToUtc(y, m, d, h, mi, TZ).getTime()).toBe(expected)
     }
+  })
+
+  it('الساعة المكرّرة بالانتقال للشتوي بترجع المرة الأولى، والساعة الناقصة بالصيفي بتتقدّم', () => {
+    // 25/10/2026: الساعة 02:00 صيفي بترجع 01:00 شتوي، فـ 01:30 بتمر مرتين (22:30Z ثم 23:30Z). بنختار الأولى.
+    // (@date-fns/tz بتجاوب هون حسب منطقة الجهاز اللي بيشغّل الاختبار، فالقيمة مكتوبة صريحة)
+    const repeated = zonedWallClockToUtc(2026, 10, 25, 1, 30, TZ)
+    expect(repeated.toISOString()).toBe('2026-10-24T22:30:00.000Z')
+    expect(localClock(repeated, TZ)).toEqual({ date: '2026-10-25', minutes: 90 })
+
+    // 27/3/2026: الساعة 02:00 بتقفز لـ 03:00، فـ 02:30 مش موجودة وبتصير 03:30 (00:30Z)
+    const missing = zonedWallClockToUtc(2026, 3, 27, 2, 30, TZ)
+    expect(missing.toISOString()).toBe('2026-03-27T00:30:00.000Z')
+    expect(localClock(missing, TZ)).toEqual({ date: '2026-03-27', minutes: 3 * 60 + 30 })
   })
 
   it('نطاق اليوم المحلي', () => {

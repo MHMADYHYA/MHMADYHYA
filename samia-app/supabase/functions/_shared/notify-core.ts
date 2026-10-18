@@ -43,9 +43,18 @@ export function parseTimeOfDay(text: string): number {
   return Number(m[1]) * 60 + Number(m[2])
 }
 
+/** فرق المنطقة الزمنية عن UTC (بالملي ثانية) بلحظة معيّنة */
+function offsetAt(ms: number, timeZone: string): number {
+  const p = partsIn(new Date(ms), timeZone)
+  return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - ms
+}
+
 /**
- * لحظة حقيقية (UTC) من ساعة حائط بمنطقة زمنية. بتتعامل مع التوقيت الصيفي والشتوي
- * بتصحيح الفرق مرتين.
+ * لحظة حقيقية (UTC) من ساعة حائط بمنطقة زمنية، بدون أي مكتبة.
+ * بتجرّب الفرق عن UTC قبل الوقت المطلوب بيوم وبعده بيوم، فبتغطي ليلة تغيير التوقيت:
+ * - ساعة بتتكرر (الانتقال للشتوي): بنرجّع المرة الأولى (الأبكر)، زي المتصفح ومكتبات التواريخ.
+ * - ساعة مش موجودة (الانتقال للصيفي): بتتقدّم بمقدار القفزة (02:30 بتصير 03:30).
+ * النتيجة ثابتة مهما كانت المنطقة الزمنية للجهاز اللي بيشغّل الكود.
  */
 export function zonedWallClockToUtc(
   year: number,
@@ -55,14 +64,15 @@ export function zonedWallClockToUtc(
   minute: number,
   timeZone: string,
 ): Date {
-  let guess = Date.UTC(year, month - 1, day, hour, minute, 0)
-  for (let i = 0; i < 2; i++) {
-    const p = partsIn(new Date(guess), timeZone)
-    const seen = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second)
-    const wanted = Date.UTC(year, month - 1, day, hour, minute, 0)
-    guess += wanted - seen
-  }
-  return new Date(guess)
+  const wanted = Date.UTC(year, month - 1, day, hour, minute, 0)
+  const DAY = 86_400_000
+  const offsetBefore = offsetAt(wanted - DAY, timeZone)
+  const offsetAfter = offsetAt(wanted + DAY, timeZone)
+  const candidates = [...new Set([wanted - offsetBefore, wanted - offsetAfter])]
+    .filter((ms) => offsetAt(ms, timeZone) === wanted - ms)
+    .sort((a, b) => a - b)
+  // ما في مرشّح صالح = الساعة مش موجودة؛ الفرق اللي كان ساري قبل القفزة بينقلها لبعدها
+  return new Date(candidates[0] ?? wanted - offsetBefore)
 }
 
 /** بداية ونهاية (حصرية) اليوم المحلي الحالي بالـUTC */
