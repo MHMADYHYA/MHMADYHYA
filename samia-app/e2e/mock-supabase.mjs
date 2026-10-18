@@ -52,6 +52,7 @@ export function createMockDb() {
       payment_status: 'unpaid',
       payment_method: null,
       paid_at: null,
+      start_alert_sent_at: null,
       created_at: now,
       updated_at: now,
       ...partial,
@@ -122,6 +123,7 @@ export function createMockDb() {
     daily_summary_enabled: true,
     daily_summary_time: '08:00:00',
     daily_summary_last_sent_on: null,
+    session_alert_minutes: 30,
     timezone: 'Asia/Jerusalem',
     updated_at: now,
   }

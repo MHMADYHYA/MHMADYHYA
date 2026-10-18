@@ -149,3 +149,42 @@ export function dailySummaryNotification(sessions: number, messages: number): { 
     messages === 0 ? '' : `، و${messagesCountText(messages)} لازم ${messages === 2 ? 'ينبعتوا' : 'تنبعت'}`
   return { title: 'صباح الخير', body: `صباح الخير، ${sessionsPart}${messagesPart}.` }
 }
+
+// -----------------------------------------------------------------------------
+// تنبيه قبل بداية الجلسة (افتراضي نص ساعة، settings.session_alert_minutes)
+// -----------------------------------------------------------------------------
+
+/** حالات الجلسة اللي لسا قايمة، فبينبعت عنها تنبيه قبل البداية */
+export const SESSION_ALERT_STATUSES = ['pending', 'confirmed', 'change_requested'] as const
+
+/** "16:00" بالتوقيت المحلي */
+export function localTimeText(at: Date, timeZone: string): string {
+  const p = partsIn(at, timeZone)
+  return `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}`
+}
+
+/** "نص ساعة"، "ربع ساعة"، "25 دقيقة"... فوق الـ10 دقايق بتتقرّب لأقرب 5 (المجدول بيشتغل كل 5 دقايق) */
+export function minutesUntilText(minutes: number): string {
+  const n = minutes > 10 ? Math.round(minutes / 5) * 5 : Math.max(1, Math.round(minutes))
+  if (n === 15) return 'ربع ساعة'
+  if (n === 30) return 'نص ساعة'
+  if (n === 60) return 'ساعة'
+  if (n === 120) return 'ساعتين'
+  return arabicCount(n, { one: 'دقيقة', two: 'دقيقتين', few: 'دقايق', many: 'دقيقة' })
+}
+
+/** هل لازم ينبعت تنبيه البداية هلأ؟ (الجلسة لسا ما بلّشت، ودخلنا بفترة التنبيه) */
+export function isSessionAlertDue(startsAt: Date, now: Date, alertMinutes: number): boolean {
+  if (!(alertMinutes > 0)) return false
+  const start = startsAt.getTime()
+  return start > now.getTime() && start - alertMinutes * 60_000 <= now.getTime()
+}
+
+/** "عندك جلسة الساعة 16:00، بعد نص ساعة." (بدون اسم الزبون، عشان الخصوصية على شاشة القفل) */
+export function sessionStartingNotification(startsAt: Date, now: Date, timeZone: string): { title: string; body: string } {
+  const minutes = (startsAt.getTime() - now.getTime()) / 60_000
+  return {
+    title: 'جلسة قريبة',
+    body: `عندك جلسة الساعة ${localTimeText(startsAt, timeZone)}، بعد ${minutesUntilText(minutes)}.`,
+  }
+}

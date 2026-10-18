@@ -54,6 +54,7 @@ export type AppointmentRow = {
   payment_status: PaymentStatus
   payment_method: PaymentMethod | null
   paid_at: string | null
+  start_alert_sent_at: string | null
   created_at: string
   updated_at: string
 }
@@ -96,6 +97,7 @@ export type SettingsRow = {
   daily_summary_enabled: boolean
   daily_summary_time: string
   daily_summary_last_sent_on: string | null
+  session_alert_minutes: number
   timezone: string
   updated_at: string
 }
@@ -165,6 +167,7 @@ export interface Database {
           | 'payment_status'
           | 'payment_method'
           | 'paid_at'
+          | 'start_alert_sent_at'
           | 'created_at'
           | 'updated_at'
         >

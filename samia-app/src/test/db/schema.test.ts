@@ -244,6 +244,32 @@ describe('المواعيد', () => {
     expect(events.map((e) => e.type)).toEqual(['created', 'status_changed', 'payment_changed', 'payment_changed'])
   })
 
+  it('تنبيه بداية الجلسة: الإعداد الافتراضي نص ساعة، وتغيير الوقت بيرجّع التنبيه، وغير هيك لا', async () => {
+    const [s] = await db.asAdmin<{ session_alert_minutes: number }>(adminId, `select session_alert_minutes from settings`)
+    expect(s.session_alert_minutes).toBe(30)
+
+    const id = await createAppointment('2030-07-01T08:00:00Z')
+    const read = async () =>
+      (await db.asAdmin<{ start_alert_sent_at: string | null }>(adminId, `select start_alert_sent_at from appointments where id = $1`, [id]))[0]
+        .start_alert_sent_at
+    expect(await read()).toBeNull()
+
+    await db.asAdmin(adminId, `update appointments set start_alert_sent_at = now() where id = $1`, [id])
+    await db.asAdmin(adminId, `update appointments set status = 'confirmed', admin_notes = 'x' where id = $1`, [id])
+    expect(await read()).not.toBeNull()
+
+    await db.asAdmin(adminId, `update appointments set starts_at = '2030-07-01T10:00:00Z' where id = $1`, [id])
+    expect(await read()).toBeNull()
+
+    const events = await db.asAdmin<{ type: string }>(
+      adminId,
+      `select type from appointment_events where appointment_id = $1 order by created_at`,
+      [id],
+    )
+    // تسجيل التنبيه نفسه ما بيعمل أحداث بسجل الموعد
+    expect(events.map((e) => e.type)).toEqual(['created', 'status_changed', 'rescheduled'])
+  })
+
   it('رقم تلفون مش صالح بينرفض من قاعدة البيانات', async () => {
     await expect(createClient('x', '050-1234567')).rejects.toThrow(/clients_phone_check/)
     await expect(createClient('x', '+972501234567')).rejects.toThrow(/clients_phone_check/)

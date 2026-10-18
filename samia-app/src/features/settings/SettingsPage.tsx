@@ -219,7 +219,7 @@ function PushSection() {
   })
 
   return (
-    <Section title="التنبيهات على التلفون" icon={<BellIcon />} description="تنبيه لما يجي وقت رسالة لازم تنبعت، وملخص الصبح.">
+    <Section title="التنبيهات على التلفون" icon={<BellIcon />} description="تنبيه قبل كل جلسة بنص ساعة، ولما يجي وقت رسالة لازم تنبعت، وملخص الصبح.">
       {!support.supported ? (
         <SoftNotice>{support.reason}</SoftNotice>
       ) : (

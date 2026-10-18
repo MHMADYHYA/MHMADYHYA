@@ -1,12 +1,17 @@
 import { TZDate } from '@date-fns/tz'
 import { describe, expect, it } from 'vitest'
 import {
+  SESSION_ALERT_STATUSES,
   arabicCount,
   dailySummaryNotification,
   dueMessagesNotification,
+  isSessionAlertDue,
   localClock,
   localDayRangeUtc,
+  localTimeText,
+  minutesUntilText,
   parseTimeOfDay,
+  sessionStartingNotification,
   shouldSendDailySummary,
   zonedWallClockToUtc,
 } from '../../supabase/functions/_shared/notify-core'
@@ -111,5 +116,48 @@ describe('نصوص التنبيهات', () => {
     expect(dailySummaryNotification(1, 0).body).toBe('صباح الخير، اليوم عندك جلسة وحدة.')
     expect(dailySummaryNotification(0, 0).body).toBe('صباح الخير، ما عندك جلسات اليوم.')
     expect(dailySummaryNotification(0, 4).body).toBe('صباح الخير، ما عندك جلسات اليوم، و4 رسائل لازم تنبعت.')
+  })
+})
+
+describe('تنبيه قبل بداية الجلسة', () => {
+  const TZ_IL = 'Asia/Jerusalem'
+  // 20/10/2026 لسا صيفي (UTC+3): 13:00Z = 16:00 بالقدس
+  const start = new Date('2026-10-20T13:00:00Z')
+
+  it('بيوصل لما نفوت بالنص ساعة قبل الجلسة، ومش قبل ولا بعد البداية', () => {
+    expect(isSessionAlertDue(start, new Date('2026-10-20T12:29:59Z'), 30)).toBe(false)
+    expect(isSessionAlertDue(start, new Date('2026-10-20T12:30:00Z'), 30)).toBe(true)
+    expect(isSessionAlertDue(start, new Date('2026-10-20T12:55:00Z'), 30)).toBe(true)
+    expect(isSessionAlertDue(start, new Date('2026-10-20T13:00:00Z'), 30)).toBe(false)
+    expect(isSessionAlertDue(start, new Date('2026-10-20T12:45:00Z'), 0)).toBe(false) // 0 = مطفي
+  })
+
+  it('النص فيه ساعة الجلسة بالتوقيت المحلي وكم باقي، بدون اسم الزبون', () => {
+    expect(sessionStartingNotification(start, new Date('2026-10-20T12:30:00.080Z'), TZ_IL)).toEqual({
+      title: 'جلسة قريبة',
+      body: 'عندك جلسة الساعة 16:00، بعد نص ساعة.',
+    })
+    expect(sessionStartingNotification(start, new Date('2026-10-20T12:35:00Z'), TZ_IL).body).toBe('عندك جلسة الساعة 16:00، بعد 25 دقيقة.')
+  })
+
+  it('ساعة الجلسة صحيحة بالشتوي كمان (بعد 25/10)', () => {
+    // 2/11/2026 شتوي (UTC+2): 14:00Z = 16:00
+    expect(localTimeText(new Date('2026-11-02T14:00:00Z'), TZ_IL)).toBe('16:00')
+    expect(localTimeText(new Date('2026-10-20T13:00:00Z'), TZ_IL)).toBe('16:00')
+  })
+
+  it('صيغ الوقت الباقي', () => {
+    expect(minutesUntilText(29.99)).toBe('نص ساعة')
+    expect(minutesUntilText(31)).toBe('نص ساعة')
+    expect(minutesUntilText(15)).toBe('ربع ساعة')
+    expect(minutesUntilText(60)).toBe('ساعة')
+    expect(minutesUntilText(27)).toBe('25 دقيقة')
+    expect(minutesUntilText(5)).toBe('5 دقايق')
+    expect(minutesUntilText(2)).toBe('دقيقتين')
+    expect(minutesUntilText(0.4)).toBe('دقيقة')
+  })
+
+  it('بس الجلسات القايمة بتاخد تنبيه', () => {
+    expect([...SESSION_ALERT_STATUSES].sort()).toEqual(['change_requested', 'confirmed', 'pending'])
   })
 })

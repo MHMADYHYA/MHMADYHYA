@@ -2,6 +2,7 @@
  * Edge Function: notify-due
  * بتنادى كل 5 دقايق من pg_cron (مع x-cron-secret)، أو من التطبيق (action: test) بحساب المشرف.
  * - بتلاقي الرسائل اللي وقتها إجا وما انبعتت وما انعمل عنها تنبيه ← تنبيه واحد "عندك n رسائل لازم تنبعت"
+ * - قبل بداية كل جلسة بـ settings.session_alert_minutes (افتراضي نص ساعة) ← "عندك جلسة الساعة 16:00، بعد نص ساعة"
  * - ملخص الصبح مرة باليوم بالساعة اللي بالإعدادات (بتوقيت القدس)
  *
  * الأسرار: CRON_SECRET, VAPID_KEYS (JSON من npm run vapid), VAPID_CONTACT (إيميل، اختياري)
@@ -9,9 +10,12 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import * as webpush from 'jsr:@negrel/webpush@0.5'
 import {
+  SESSION_ALERT_STATUSES,
   dailySummaryNotification,
   dueMessagesNotification,
+  isSessionAlertDue,
   localDayRangeUtc,
+  sessionStartingNotification,
   shouldSendDailySummary,
 } from '../_shared/notify-core.ts'
 
@@ -145,13 +149,40 @@ Deno.serve(async (req) => {
     }
   }
 
-  // 2) ملخص الصبح
   const { data: settings } = await admin.from('settings').select('*').eq('id', true).single()
+  const tz = (settings?.timezone as string | undefined) || 'Asia/Jerusalem'
+
+  // 2) تنبيه قبل بداية كل جلسة (settings.session_alert_minutes، افتراضي 30، و0 = مطفي)
+  const alertMinutes = Number(settings?.session_alert_minutes ?? 30)
+  let sessionAlerts = 0
+  if (alertMinutes > 0 && subscriptions.length > 0) {
+    const windowEnd = new Date(now.getTime() + alertMinutes * 60_000).toISOString()
+    const { data: soonRows, error: soonError } = await admin
+      .from('appointments')
+      .select('id, starts_at')
+      .in('status', [...SESSION_ALERT_STATUSES])
+      .is('start_alert_sent_at', null)
+      .gt('starts_at', nowIso)
+      .lte('starts_at', windowEnd)
+      .order('starts_at')
+    if (soonError) console.error('session alerts query failed', soonError.message)
+    for (const row of soonRows ?? []) {
+      const startsAt = new Date(row.starts_at as string)
+      if (!isSessionAlertDue(startsAt, now, alertMinutes)) continue
+      const n = sessionStartingNotification(startsAt, now, tz)
+      const sent = await broadcast({ ...n, url: `/appointments/${row.id}`, tag: `session-start-${row.id}` })
+      if (sent > 0) {
+        await admin.from('appointments').update({ start_alert_sent_at: nowIso }).eq('id', row.id as string)
+        sessionAlerts++
+      }
+    }
+  }
+
+  // 3) ملخص الصبح
   let summarySent = false
   if (settings) {
     const decision = shouldSendDailySummary(settings, now)
     if (decision.send && subscriptions.length > 0) {
-      const tz = settings.timezone || 'Asia/Jerusalem'
       const range = localDayRangeUtc(now, tz)
       const { count: sessions } = await admin
         .from('appointments')
@@ -175,5 +206,5 @@ Deno.serve(async (req) => {
     }
   }
 
-  return json({ ok: true, due: due.length, dueSent, summarySent, devices: subscriptions.length })
+  return json({ ok: true, due: due.length, dueSent, sessionAlerts, summarySent, devices: subscriptions.length })
 })
