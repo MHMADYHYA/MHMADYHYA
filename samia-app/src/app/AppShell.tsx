@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { BrandLockup } from '../components/BrandLockup'
+import { BrowserHint } from '../components/BrowserHint'
 import { ButterflyMark } from '../components/ButterflyMark'
 import { CountBadge } from '../components/Controls'
 import { CalendarIcon, CoinsIcon, FlagIcon, MessageIcon, PlusIcon, SettingsIcon, UsersIcon } from '../components/Icons'
@@ -57,6 +58,7 @@ export function AppShell() {
       </header>
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-28 pt-4">
+        <BrowserHint />
         <Outlet />
       </main>
 

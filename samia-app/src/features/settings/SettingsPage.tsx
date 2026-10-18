@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { OpenInChromeButton } from '../../components/BrowserHint'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { PageTitle } from '../../components/Controls'
@@ -20,6 +21,7 @@ import { dayKey, formatDate, formatTime } from '../../lib/dates'
 import { env } from '../../lib/env'
 import { toArabicError } from '../../lib/errors'
 import { formatPhoneForDisplay } from '../../lib/phone'
+import { detectBrowser, shouldSuggestChrome } from '../../lib/browser'
 import { checkPushSupport, getCurrentPushSubscription, subscribeToPush, subscriptionToRow, unsubscribeFromPush } from '../../lib/push'
 import { PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS, STATUS_LABELS } from '../../lib/status'
 import { requireSupabase } from '../../lib/supabase'
@@ -170,6 +172,8 @@ function ZoomSection({ s }: { s: SettingsRow }) {
 function PushSection() {
   const toast = useToast()
   const support = checkPushSupport()
+  const browser = detectBrowser(navigator.userAgent)
+  const isAndroid = /Android/i.test(navigator.userAgent)
   const [subscribed, setSubscribed] = useState<boolean | null>(null)
 
   useEffect(() => {
@@ -220,8 +224,19 @@ function PushSection() {
 
   return (
     <Section title="التنبيهات على التلفون" icon={<BellIcon />} description="تنبيه قبل كل جلسة بنص ساعة، ولما يجي وقت رسالة لازم تنبعت، وملخص الصبح.">
-      {!support.supported ? (
-        <SoftNotice>{support.reason}</SoftNotice>
+      {shouldSuggestChrome(browser) ? (
+        <div className="space-y-3">
+          <SoftNotice>
+            {browser === 'samsung' ? 'التطبيق مفتوح بمتصفح سامسونج.' : 'التطبيق مفتوح جوا تطبيق ثاني.'} التنبيهات بتشتغل لما التطبيق يكون
+            مثبّت من Chrome. افتحيه بـ Chrome، ثبّتيه، وارجعي لهون اكبسي "فعّلي التنبيهات".
+          </SoftNotice>
+          <OpenInChromeButton />
+        </div>
+      ) : !support.supported ? (
+        <div className="space-y-3">
+          <SoftNotice>{support.reason}</SoftNotice>
+          {isAndroid && <OpenInChromeButton />}
+        </div>
       ) : (
         <div className="flex flex-wrap items-center gap-2">
           <span className={`rounded-full px-3 py-1 text-sm font-semibold ${subscribed ? 'bg-status-confirmed text-status-confirmed-fg' : 'bg-page-tint text-muted'}`}>
@@ -252,7 +267,8 @@ function PushSection() {
             التطبيق من الشاشة الرئيسية ← ارجعي لهاي الصفحة واكبسي "فعّلي التنبيهات".
           </p>
           <p>
-            <span className="font-semibold">أندرويد:</span> افتحي الرابط بـ Chrome ← اكبسي "فعّلي التنبيهات" واسمحي. وللأفضل: من قائمة Chrome ← "تثبيت التطبيق".
+            <span className="font-semibold">أندرويد:</span> افتحي الرابط بـ Chrome (مش متصفح سامسونج) ← اكبسي "ثبّتي التطبيق" (أو من قائمة Chrome
+            ← "تثبيت التطبيق") ← افتحيه من أيقونة "مواعيد" ← هون اكبسي "فعّلي التنبيهات" واسمحي.
           </p>
           <p>لازم تفعّلي التنبيهات على كل جهاز بدك توصلك عليه (مثلاً التلفون والكمبيوتر).</p>
         </div>

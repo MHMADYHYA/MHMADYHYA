@@ -12,13 +12,12 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant
 }
 
+/** نفس شكل الزر، لروابط لازم تبيّن كزر */
+export function buttonClassName(variant: Variant = 'primary', className = ''): string {
+  return `inline-flex min-h-11 items-center justify-center gap-2 rounded-button px-5 text-base font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${VARIANT_CLASSES[variant]} ${className}`
+}
+
 /** كل إشي بينكبس 44px على الأقل */
 export function Button({ variant = 'primary', className = '', type = 'button', ...props }: ButtonProps) {
-  return (
-    <button
-      type={type}
-      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-button px-5 text-base font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${VARIANT_CLASSES[variant]} ${className}`}
-      {...props}
-    />
-  )
+  return <button type={type} className={buttonClassName(variant, className)} {...props} />
 }

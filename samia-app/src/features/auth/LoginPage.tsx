@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate } from 'react-router'
 import { BrandLockup } from '../../components/BrandLockup'
+import { BrowserHint } from '../../components/BrowserHint'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { ErrorNotice, SoftNotice } from '../../components/Feedback'
@@ -41,6 +42,9 @@ export function LoginPage() {
     <div className="flex min-h-dvh flex-col items-center justify-center px-4 py-10">
       <div className="mb-8">
         <BrandLockup size="lg" />
+      </div>
+      <div className="w-full max-w-sm">
+        <BrowserHint />
       </div>
       <Card className="w-full max-w-sm">
         {status === 'not_configured' ? (
