@@ -44,15 +44,16 @@ export function CalendarGrid({ view, anchor, appointments, onSlotClick, onEventC
         start: wallClockIso(a.starts_at),
         end: wallClockIso(a.ends_at),
         classNames: [`fc-status-${a.status}`],
-        extendedProps: { status: a.status, hasCompanion: a.has_companion, time: formatTime(a.starts_at) },
+        extendedProps: { status: a.status, hasCompanion: a.has_companion, inPerson: a.session_type === 'in_person', time: formatTime(a.starts_at) },
       })),
     [appointments],
   )
 
   function renderEvent(arg: EventContentArg) {
-    const { status, hasCompanion, time } = arg.event.extendedProps as {
+    const { status, hasCompanion, inPerson, time } = arg.event.extendedProps as {
       status: keyof typeof STATUS_LABELS
       hasCompanion: boolean
+      inPerson: boolean
       time: string
     }
     return (
@@ -62,7 +63,7 @@ export function CalendarGrid({ view, anchor, appointments, onSlotClick, onEventC
           {hasCompanion && <UserIcon width="12" height="12" className="shrink-0" />}
         </div>
         <div className="text-[11px] opacity-90">
-          <span dir="ltr">{time}</span> · {STATUS_LABELS[status]}
+          <span dir="ltr">{time}</span> · {inPerson ? 'وجاهي' : 'زوم'} · {STATUS_LABELS[status]}
         </div>
       </div>
     )

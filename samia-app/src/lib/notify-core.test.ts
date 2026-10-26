@@ -3,10 +3,12 @@ import { describe, expect, it } from 'vitest'
 import {
   SESSION_ALERT_STATUSES,
   arabicCount,
+  clientReplyNotification,
   dailySummaryNotification,
   dueMessagesNotification,
   isSessionAlertDue,
   localClock,
+  localDayAndDateText,
   localDayRangeUtc,
   localTimeText,
   minutesUntilText,
@@ -159,5 +161,50 @@ describe('تنبيه قبل بداية الجلسة', () => {
 
   it('بس الجلسات القايمة بتاخد تنبيه', () => {
     expect([...SESSION_ALERT_STATUSES].sort()).toEqual(['change_requested', 'confirmed', 'pending'])
+  })
+})
+
+describe('إشعار رد الزبون', () => {
+  const TZ_IL = 'Asia/Jerusalem'
+  // الثلاثاء 3/11/2026 شتوي (UTC+2): 14:00Z = 16:00
+  const start = new Date('2026-11-03T14:00:00Z')
+
+  it('اليوم والتاريخ بالتوقيت المحلي', () => {
+    expect(localDayAndDateText(start, TZ_IL)).toBe('الثلاثاء 03/11')
+    // 21:30Z يوم الإثنين = 23:30 بالقدس، نفس اليوم. 22:30Z = 00:30 الثلاثاء
+    expect(localDayAndDateText(new Date('2026-11-02T21:30:00Z'), TZ_IL)).toBe('الإثنين 02/11')
+    expect(localDayAndDateText(new Date('2026-11-02T22:30:00Z'), TZ_IL)).toBe('الثلاثاء 03/11')
+  })
+
+  it('موافق / بدي أغيّر / ما بقدر أجي، بالاسم الأول ونوع الجلسة', () => {
+    expect(clientReplyNotification({ type: 'status_changed', to_status: 'confirmed' }, 'ليلى حسن', start, TZ_IL, 'zoom')).toEqual({
+      title: 'تأكيد جلسة',
+      body: 'ليلى: موافق. جلسة زوم الثلاثاء 03/11 الساعة 16:00.',
+    })
+    expect(clientReplyNotification({ type: 'status_changed', to_status: 'change_requested' }, 'ليلى حسن', start, TZ_IL, 'in_person')).toEqual({
+      title: 'طلب تغيير موعد',
+      body: 'ليلى: بدي أغيّر الموعد. جلسة وجاهية الثلاثاء 03/11 الساعة 16:00.',
+    })
+    expect(clientReplyNotification({ type: 'status_changed', to_status: 'declined' }, ' رامي ', start, TZ_IL, 'zoom')?.body).toBe(
+      'رامي: ما بقدر أجي. جلسة زوم الثلاثاء 03/11 الساعة 16:00.',
+    )
+  })
+
+  it('الوقت انحجز لحدا ثاني', () => {
+    expect(clientReplyNotification({ type: 'slot_taken', to_status: 'declined' }, 'ليلى', start, TZ_IL, 'zoom')).toEqual({
+      title: 'الوقت انحجز',
+      body: 'ليلى: موافق، بس الوقت صار محجوز لحدا ثاني. جلسة زوم الثلاثاء 03/11 الساعة 16:00.',
+    })
+  })
+
+  it('أحداث مش ردود ما إلها إشعار', () => {
+    expect(clientReplyNotification({ type: 'status_changed', to_status: 'pending' }, 'ليلى', start, TZ_IL)).toBeNull()
+    expect(clientReplyNotification({ type: 'rescheduled', to_status: 'pending' }, 'ليلى', start, TZ_IL)).toBeNull()
+  })
+
+  it('تنبيه النص ساعة بيحكي نوع الجلسة', () => {
+    const now = new Date('2026-11-03T13:30:00Z')
+    expect(sessionStartingNotification(start, now, TZ_IL, 'in_person').body).toBe('عندك جلسة وجاهية الساعة 16:00، بعد نص ساعة.')
+    expect(sessionStartingNotification(start, now, TZ_IL, 'zoom').body).toBe('عندك جلسة زوم الساعة 16:00، بعد نص ساعة.')
   })
 })

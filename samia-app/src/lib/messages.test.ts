@@ -141,3 +141,36 @@ describe('رسائل التغيير والإلغاء', () => {
     expect(drafts[0].body).toBe('أهلاً ليلى')
   })
 })
+
+describe('زوم أو وجاهي بالرسائل', () => {
+  const now = new Date('2026-10-15T08:00:00Z')
+
+  it('الوجاهي: سطر المكان بدل رابط الزوم، حتى لو في رابط قديم', () => {
+    const drafts = buildMessages('invite', { ...appointment, session_type: 'in_person', location: '  شارع الجليل 12، الناصرة ' }, client, settings, now)
+    for (const d of drafts) {
+      expect(d.body).toContain('مكان الجلسة: شارع الجليل 12، الناصرة')
+      expect(d.body).not.toContain('زوم')
+      expect(d.body).not.toContain('https://zoom.us')
+    }
+    expect(drafts[2].body).toBe('مرحبا ليلى،\nتذكير: جلستك اليوم الساعة 10:00.\nمكان الجلسة: شارع الجليل 12، الناصرة\nسامية يحيى')
+  })
+
+  it('الزوم: رابط الزوم بس، بدون سطر المكان (حتى لو في عنوان مخزّن)', () => {
+    const drafts = buildMessages('invite', { ...appointment, session_type: 'zoom', location: 'عنوان قديم' }, client, settings, now)
+    expect(drafts[0].body).toContain('رابط الجلسة (زوم): https://zoom.us/j/111')
+    expect(drafts[0].body).not.toContain('مكان الجلسة')
+  })
+
+  it('رسالة التغيير لجلسة صارت وجاهية فيها العنوان الجديد', () => {
+    const drafts = buildMessages(
+      'change',
+      { ...appointment, session_type: 'in_person', location: 'العيادة', meeting_url: null, previous_starts_at: '2026-10-19T07:00:00Z' },
+      client,
+      settings,
+      now,
+    )
+    expect(drafts[0].kind).toBe('change')
+    expect(drafts[0].body).toContain('مكان الجلسة: العيادة')
+    expect(drafts[0].body).not.toContain('رابط الجلسة')
+  })
+})

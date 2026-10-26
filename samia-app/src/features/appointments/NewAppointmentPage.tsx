@@ -8,11 +8,12 @@ import { ErrorNotice, SoftNotice, Spinner, useToast } from '../../components/Fee
 import { ChevronRightIcon, SearchIcon, XIcon } from '../../components/Icons'
 import { Field, Input, Select, Textarea, Toggle } from '../../components/Input'
 import { useAppointment, useClients, useInvalidateAll, useSettings } from '../../hooks/queries'
-import type { ClientRow } from '../../lib/database.types'
+import type { ClientRow, SessionType } from '../../lib/database.types'
 import { combineDateAndTime, dayKey, formatTime, fromWallClock, roundUpToQuarter, splitWallClock } from '../../lib/dates'
 import { toArabicError } from '../../lib/errors'
 import { formatPhoneForDisplay } from '../../lib/phone'
 import { createAppointmentFlow, type NewAppointmentInput } from './flows'
+import { SessionPlaceFields } from './SessionPlaceFields'
 
 /** خيارات الساعة بخطوات ربع ساعة من 07:00 لـ 21:45 */
 export const TIME_OPTIONS: string[] = (() => {
@@ -45,6 +46,8 @@ export function NewAppointmentPage() {
   const [date, setDate] = useState(() => splitWallClock(initialStart).date)
   const [time, setTime] = useState(() => splitWallClock(initialStart).time)
   const [duration, setDuration] = useState<string>('')
+  const [sessionType, setSessionType] = useState<SessionType>('zoom')
+  const [location, setLocation] = useState('')
   const [hasCompanion, setHasCompanion] = useState(false)
   const [companionName, setCompanionName] = useState('')
   const [companionPhone, setCompanionPhone] = useState('')
@@ -66,6 +69,8 @@ export function NewAppointmentPage() {
     const a = prefill.data
     setClientId(a.client_id)
     setDuration(String(a.duration_min))
+    setSessionType(a.session_type ?? 'zoom')
+    setLocation(a.location ?? '')
     setHasCompanion(a.has_companion)
     setCompanionName(a.companion_name ?? '')
     setCompanionPhone(a.companion_phone ? formatPhoneForDisplay(a.companion_phone) : '')
@@ -130,6 +135,8 @@ export function NewAppointmentPage() {
       client: clientMode === 'new' ? { mode: 'new', full_name: newName, phone: newPhone } : { mode: 'existing', id: clientId },
       starts_at: startsAt,
       duration_min: durationMin,
+      session_type: sessionType,
+      location,
       has_companion: hasCompanion,
       companion_name: companionName,
       companion_phone: companionPhone,
@@ -256,6 +263,17 @@ export function NewAppointmentPage() {
           </Field>
         </Card>
 
+        <Card>
+          <SessionPlaceFields
+            idPrefix="appt"
+            sessionType={sessionType}
+            onSessionTypeChange={setSessionType}
+            location={location}
+            onLocationChange={setLocation}
+            clinicAddress={settings.data.clinic_address}
+          />
+        </Card>
+
         <Card className="space-y-3">
           <Toggle checked={hasCompanion} onChange={setHasCompanion} label="مع مرافق" description="بتوصله نسخة من كل رسالة" />
           {hasCompanion && (
@@ -291,7 +309,7 @@ export function NewAppointmentPage() {
           </Field>
         </Card>
 
-        {!settings.data.fixed_meeting_url && (
+        {sessionType === 'zoom' && !settings.data.fixed_meeting_url && (
           <SoftNotice tone="primary">
             إذا الزوم مش مربوط بعد، الموعد بينحفظ بدون رابط جلسة. بتقدر تربط الزوم أو تحط رابط ثابت من الإعدادات.
           </SoftNotice>
@@ -308,7 +326,8 @@ export function NewAppointmentPage() {
           </Button>
         </div>
         <p className="text-center text-xs text-muted">
-          بعد الحفظ بنفحص التضارب، بنعمل رابط الزوم، وبنجهّز الرسائل. الوقت: {formatTime(combineDateAndTime(date, time) ?? new Date())}
+          بعد الحفظ بنفحص التضارب، {sessionType === 'zoom' ? 'بنعمل رابط الزوم، ' : ''}وبنجهّز الرسائل. الوقت:{' '}
+          {formatTime(combineDateAndTime(date, time) ?? new Date())}
         </p>
       </form>
     </div>

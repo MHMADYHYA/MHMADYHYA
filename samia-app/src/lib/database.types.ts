@@ -18,6 +18,8 @@ export type PaymentMethod = 'cash' | 'bit' | 'transfer' | 'other'
 export type MessageRecipient = 'client' | 'companion'
 export type MessageKind = 'invite' | 'change' | 'cancel' | 'reminder_day' | 'reminder_hour'
 export type EventActor = 'admin' | 'client' | 'system'
+/** زوم أو وجاهي */
+export type SessionType = 'zoom' | 'in_person'
 
 export type ClientRow = {
   id: string
@@ -42,6 +44,9 @@ export type AppointmentRow = {
   has_companion: boolean
   companion_name: string | null
   companion_phone: string | null
+  session_type: SessionType
+  /** عنوان الجلسة الوجاهية */
+  location: string | null
   meeting_url: string | null
   zoom_meeting_id: string | null
   public_token: string
@@ -81,6 +86,8 @@ export type AppointmentEventRow = {
   from_status: string | null
   to_status: string | null
   data: Json
+  /** إمتى انبعت إشعار لسامية عن رد الزبون */
+  notified_at: string | null
   created_at: string
 }
 
@@ -91,6 +98,8 @@ export type SettingsRow = {
   reminder_hour_minutes: number
   follow_up_after_hours: number
   fixed_meeting_url: string | null
+  /** عنوان العيادة للجلسات الوجاهية */
+  clinic_address: string | null
   templates: Json
   public_base_url: string | null
   default_price: number | null
@@ -155,6 +164,8 @@ export interface Database {
           | 'has_companion'
           | 'companion_name'
           | 'companion_phone'
+          | 'session_type'
+          | 'location'
           | 'meeting_url'
           | 'zoom_meeting_id'
           | 'public_token'
@@ -198,7 +209,7 @@ export interface Database {
       }
       appointment_events: {
         Row: AppointmentEventRow
-        Insert: Insertable<AppointmentEventRow, 'id' | 'from_status' | 'to_status' | 'data' | 'created_at'>
+        Insert: Insertable<AppointmentEventRow, 'id' | 'from_status' | 'to_status' | 'data' | 'notified_at' | 'created_at'>
         Update: Partial<AppointmentEventRow>
         Relationships: [
           {
@@ -240,6 +251,8 @@ export interface Database {
           p_admin_notes: string | null
           p_public_token: string | null
           p_messages: Json
+          p_session_type?: SessionType
+          p_location?: string | null
         }
         Returns: string
       }
@@ -251,6 +264,8 @@ export interface Database {
           p_meeting_url: string | null
           p_zoom_meeting_id: string | null
           p_messages: Json
+          p_session_type?: SessionType | null
+          p_location?: string | null
         }
         Returns: undefined
       }

@@ -1,8 +1,9 @@
 import { Link } from 'react-router'
 import type { AppointmentWithClient } from '../lib/database.types'
 import { durationLabel, formatTime } from '../lib/dates'
+import { SESSION_TYPE_LABELS } from '../lib/place'
 import { isUnpaid } from '../lib/transitions'
-import { ChevronLeftIcon, CoinsIcon, MessageIcon, UserIcon } from './Icons'
+import { ChevronLeftIcon, CoinsIcon, MapPinIcon, MessageIcon, UserIcon, VideoIcon } from './Icons'
 import { StatusBadge } from './StatusBadge'
 
 interface Props {
@@ -44,6 +45,10 @@ export function AppointmentRow({ appointment: a, now, showDate }: Props) {
         <p className="truncate font-semibold">{a.clients.full_name}</p>
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
           <StatusBadge status={a.status} />
+          <span className="inline-flex items-center gap-1 text-xs text-muted" title="نوع الجلسة">
+            {a.session_type === 'in_person' ? <MapPinIcon width="15" height="15" /> : <VideoIcon width="15" height="15" />}
+            {SESSION_TYPE_LABELS[a.session_type ?? 'zoom']}
+          </span>
           {a.has_companion && (
             <span className="inline-flex items-center gap-1 text-xs text-muted" title="مع مرافق">
               <UserIcon width="16" height="16" />

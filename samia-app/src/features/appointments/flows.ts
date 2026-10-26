@@ -10,12 +10,13 @@ import {
   invokeZoom,
   rescheduleAppointment,
 } from '../../lib/api'
-import type { AppointmentWithClient, ClientRow, SettingsRow } from '../../lib/database.types'
+import type { AppointmentWithClient, ClientRow, SessionType, SettingsRow } from '../../lib/database.types'
 import { formatTime, wallClockIso } from '../../lib/dates'
 import { env } from '../../lib/env'
 import { AppError, isConflictError } from '../../lib/errors'
 import { buildMessages } from '../../lib/messages'
 import { normalizePhone } from '../../lib/phone'
+import { resolvePlace } from '../../lib/place'
 import { generatePublicToken } from '../../lib/tokens'
 import { canReschedule } from '../../lib/transitions'
 
@@ -24,6 +25,14 @@ export interface MeetingInfo {
   zoom_meeting_id: string | null
   /** تنبيه لسامية إذا الزوم ما اشتغل */
   warning: string | null
+}
+
+/** الجلسة الوجاهية ما إلها اجتماع زوم */
+const NO_MEETING: MeetingInfo = { meeting_url: null, zoom_meeting_id: null, warning: null }
+
+function joinWarnings(...warnings: (string | null)[]): string | null {
+  const list = warnings.filter((w): w is string => !!w)
+  return list.length ? list.join(' ') : null
 }
 
 /** الإعدادات مع رابط التطبيق معبّى من .env إذا سامية لسا ما حفظته */
@@ -104,6 +113,10 @@ export interface NewAppointmentInput {
   client: { mode: 'existing'; id: string } | { mode: 'new'; full_name: string; phone: string }
   starts_at: Date
   duration_min: number
+  /** زوم (افتراضي) أو وجاهي */
+  session_type?: SessionType
+  /** عنوان الجلسة الوجاهية */
+  location?: string
   has_companion: boolean
   companion_name: string
   companion_phone: string
@@ -151,6 +164,8 @@ export async function createAppointmentFlow(
     companionName = input.companion_name.trim()
   }
 
+  const place = resolvePlace(input.session_type, input.location)
+
   // 2) التضارب (قبل إنشاء زبون أو اجتماع زوم)
   const end = new Date(input.starts_at.getTime() + input.duration_min * 60_000)
   await assertNoConflict(input.starts_at, end)
@@ -158,8 +173,8 @@ export async function createAppointmentFlow(
   // 3) الزبون
   const client: ClientRow = existingClient ?? (await createClientRecord(newClient!))
 
-  // 4) الزوم
-  const meeting = await createMeeting(input.starts_at, input.duration_min, settings)
+  // 4) الزوم (للجلسات الوجاهية ما في اجتماع)
+  const meeting = place.session_type === 'zoom' ? await createMeeting(input.starts_at, input.duration_min, settings) : NO_MEETING
 
   // 5) الرسائل والحفظ
   const public_token = generatePublicToken()
@@ -167,6 +182,8 @@ export async function createAppointmentFlow(
     'invite',
     {
       starts_at: input.starts_at,
+      session_type: place.session_type,
+      location: place.location,
       meeting_url: meeting.meeting_url,
       public_token,
       has_companion: input.has_companion,
@@ -186,6 +203,8 @@ export async function createAppointmentFlow(
       has_companion: input.has_companion,
       companion_name: companionName,
       companion_phone: companionPhone,
+      session_type: place.session_type,
+      location: place.location,
       meeting_url: meeting.meeting_url,
       zoom_meeting_id: meeting.zoom_meeting_id,
       price: input.price,
@@ -207,22 +226,44 @@ export async function createAppointmentFlow(
   }
 }
 
+/**
+ * تغيير موعد: الوقت والمدة، وكمان النوع (زوم / وجاهي) والعنوان.
+ * - زوم ← زوم: بيتعدّل اجتماع الزوم
+ * - وجاهي ← زوم: بينعمل اجتماع جديد (وبينحذف إذا الحفظ فشل)
+ * - زوم ← وجاهي: اجتماع الزوم بينحذف بعد الحفظ
+ */
 export async function rescheduleFlow(
   a: AppointmentWithClient,
   starts_at: Date,
   duration_min: number,
   rawSettings: SettingsRow,
   now: Date,
+  newPlace?: { session_type: SessionType; location: string | null },
 ): Promise<FlowResult> {
   const settings = withLinkFallback(rawSettings)
   if (!canReschedule(a)) throw new AppError('هاد الموعد خلص (حضر / ما حضر). غيّري الحالة أول إذا بدك تعدّلي وقته.')
+  const oldType: SessionType = a.session_type ?? 'zoom'
+  const place = resolvePlace(newPlace?.session_type ?? oldType, newPlace ? newPlace.location : a.location)
   const end = new Date(starts_at.getTime() + duration_min * 60_000)
   await assertNoConflict(starts_at, end, a.id)
-  const meeting = await updateMeeting(a, starts_at, duration_min, settings)
+
+  let meeting: MeetingInfo = NO_MEETING
+  let createdZoomId: string | null = null
+  if (place.session_type === 'zoom') {
+    if (oldType === 'zoom') {
+      meeting = await updateMeeting(a, starts_at, duration_min, settings)
+    } else {
+      meeting = await createMeeting(starts_at, duration_min, settings)
+      createdZoomId = meeting.zoom_meeting_id
+    }
+  }
+
   const messages = buildMessages(
     'change',
     {
       starts_at,
+      session_type: place.session_type,
+      location: place.location,
       meeting_url: meeting.meeting_url,
       public_token: a.public_token,
       has_companion: a.has_companion,
@@ -239,18 +280,25 @@ export async function rescheduleFlow(
       id: a.id,
       starts_at,
       duration_min,
+      session_type: place.session_type,
+      location: place.location,
       meeting_url: meeting.meeting_url,
       zoom_meeting_id: meeting.zoom_meeting_id,
       messages,
     })
   } catch (err) {
+    // الحفظ فشل: ما منخلي اجتماع زوم جديد يتيم
+    if (createdZoomId) await invokeZoom('delete', { meeting_id: createdZoomId }).catch(() => null)
     if (isConflictError((err as AppError).cause ?? err)) {
       const conflicts = await findConflicts(starts_at, end, a.id)
       throw new AppError(conflicts.length ? conflictMessage(conflicts) : 'في موعد ثاني بنفس الوقت.')
     }
     throw err
   }
-  return { id: a.id, warning: meeting.warning }
+
+  // صارت وجاهية: اجتماع الزوم القديم ما عاد إله لزوم
+  const zoomWarning = place.session_type === 'in_person' && oldType === 'zoom' ? await deleteMeeting(a) : null
+  return { id: a.id, warning: joinWarnings(meeting.warning, zoomWarning) }
 }
 
 export async function cancelFlow(
@@ -265,6 +313,8 @@ export async function cancelFlow(
     'cancel',
     {
       starts_at: a.starts_at,
+      session_type: a.session_type,
+      location: a.location,
       meeting_url: a.meeting_url,
       public_token: a.public_token,
       has_companion: a.has_companion,

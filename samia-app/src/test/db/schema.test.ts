@@ -297,7 +297,29 @@ describe('صفحة الزبون العامة', () => {
     expect(info.meeting_url).toBe('https://zoom.us/j/123')
     expect(info.can_respond).toBe(true)
     expect(info.duration_min).toBe(45)
-    expect(Object.keys(info).sort()).toEqual(['can_respond', 'duration_min', 'first_name', 'meeting_url', 'starts_at', 'status'])
+    expect(info.session_type).toBe('zoom')
+    expect(info.location).toBeNull()
+    expect(Object.keys(info).sort()).toEqual([
+      'can_respond',
+      'duration_min',
+      'first_name',
+      'location',
+      'meeting_url',
+      'session_type',
+      'starts_at',
+      'status',
+    ])
+  })
+
+  it('رد الزبون بينسجّل بدون إشعار لسا (notify-due بتبعته)، والردود القديمة ما بتنبعت', async () => {
+    const token = 'tok_' + 'n'.repeat(39)
+    const id = await createAppointment('2030-09-05T08:00:00Z', 45, { public_token: token })
+    await db.asAnon(`select respond_to_appointment($1, 'confirm', null)`, [token])
+    const events = await db.root<{ actor: string; type: string; notified_at: string | null }>(
+      `select actor, type, notified_at from appointment_events where appointment_id = $1 and actor = 'client'`,
+      [id],
+    )
+    expect(events).toEqual([{ actor: 'client', type: 'status_changed', notified_at: null }])
   })
 
   it('الزبون بيقدر يوافق ويغيّر رده، وبينسجّل كـ client', async () => {
@@ -402,5 +424,71 @@ describe('صفحة الزبون العامة', () => {
     await expect(db.asAnon(`select admin_cancel_appointment(gen_random_uuid(), null, '[]'::jsonb)`)).rejects.toThrow(
       /permission denied/,
     )
+  })
+})
+
+describe('زوم أو وجاهي', () => {
+  const ARGS14 = `$1, $2::timestamptz, $3, false, null, null, $4, $5, 200, null, $6, '[]'::jsonb, $7, $8`
+
+  async function createWithType(startsAt: string, type: string, location: string | null, token: string) {
+    const rows = await db.asAdmin<{ admin_create_appointment: string }>(
+      adminId,
+      `select admin_create_appointment(${ARGS14})`,
+      [clientId, startsAt, 45, 'https://zoom.us/j/999', 'z999', token, type, location],
+    )
+    return rows[0].admin_create_appointment
+  }
+
+  async function read(id: string) {
+    const [a] = await db.root<{ session_type: string; location: string | null; meeting_url: string | null; zoom_meeting_id: string | null }>(
+      `select session_type, location, meeting_url, zoom_meeting_id from appointments where id = $1`,
+      [id],
+    )
+    return a
+  }
+
+  it('الجلسة الوجاهية بتنحفظ بالعنوان وبدون زوم، وصفحة الزبون بتبيّن العنوان', async () => {
+    const token = 'tok_' + 'p'.repeat(39)
+    const id = await createWithType('2031-03-01T08:00:00Z', 'in_person', '  شارع الجليل 12 ', token)
+    expect(await read(id)).toEqual({ session_type: 'in_person', location: 'شارع الجليل 12', meeting_url: null, zoom_meeting_id: null })
+
+    const [row] = await db.asAnon<{ get_public_appointment: Record<string, unknown> }>(`select get_public_appointment($1)`, [token])
+    expect(row.get_public_appointment).toMatchObject({ session_type: 'in_person', location: 'شارع الجليل 12', meeting_url: null })
+  })
+
+  it('الزوم ما بيخزّن عنوان، والنسخة القديمة من التطبيق (بدون النوع) بتعمل زوم', async () => {
+    const id = await createWithType('2031-03-02T08:00:00Z', 'zoom', 'عنوان مش لازم', 'tok_' + 'q'.repeat(39))
+    expect(await read(id)).toEqual({ session_type: 'zoom', location: null, meeting_url: 'https://zoom.us/j/999', zoom_meeting_id: 'z999' })
+    const oldStyle = await createAppointment('2031-03-03T08:00:00Z')
+    expect((await read(oldStyle)).session_type).toBe('zoom')
+  })
+
+  it('نوع غلط بينرفض', async () => {
+    await expect(createWithType('2031-03-04T08:00:00Z', 'phone', null, 'tok_' + 'r'.repeat(39))).rejects.toThrow(/invalid_session_type/)
+  })
+
+  it('تغيير الموعد بيحوّل بين زوم ووجاهي وبيمسح اللي ما إله لزوم', async () => {
+    const id = await createWithType('2031-03-05T08:00:00Z', 'zoom', null, 'tok_' + 's'.repeat(39))
+
+    // زوم ← وجاهي
+    await db.asAdmin(adminId, `select admin_reschedule_appointment($1, $2::timestamptz, 45, null, null, '[]'::jsonb, 'in_person', $3)`, [
+      id,
+      '2031-03-05T09:00:00Z',
+      'العيادة',
+    ])
+    expect(await read(id)).toEqual({ session_type: 'in_person', location: 'العيادة', meeting_url: null, zoom_meeting_id: null })
+
+    // وقت بس (بدون نوع): بيضل وجاهي بنفس العنوان
+    await db.asAdmin(adminId, `select admin_reschedule_appointment($1, $2::timestamptz, 45, null, null, '[]'::jsonb)`, [id, '2031-03-05T10:00:00Z'])
+    expect(await read(id)).toEqual({ session_type: 'in_person', location: 'العيادة', meeting_url: null, zoom_meeting_id: null })
+
+    // وجاهي ← زوم باجتماع جديد
+    await db.asAdmin(adminId, `select admin_reschedule_appointment($1, $2::timestamptz, 45, $3, $4, '[]'::jsonb, 'zoom', null)`, [
+      id,
+      '2031-03-05T11:00:00Z',
+      'https://zoom.us/j/new',
+      'znew',
+    ])
+    expect(await read(id)).toEqual({ session_type: 'zoom', location: null, meeting_url: 'https://zoom.us/j/new', zoom_meeting_id: 'znew' })
   })
 })

@@ -2,6 +2,7 @@
  * Edge Function: notify-due
  * بتنادى كل 5 دقايق من pg_cron (مع x-cron-secret)، أو من التطبيق (action: test) بحساب المشرف.
  * - بتلاقي الرسائل اللي وقتها إجا وما انبعتت وما انعمل عنها تنبيه ← تنبيه واحد "عندك n رسائل لازم تنبعت"
+ * - رد الزبون من صفحته (موافق / بدي أغيّر / ما بقدر أجي) ← "ليلى: موافق. جلسة زوم الثلاثاء 28/10 الساعة 16:00."
  * - قبل بداية كل جلسة بـ settings.session_alert_minutes (افتراضي نص ساعة) ← "عندك جلسة الساعة 16:00، بعد نص ساعة"
  * - ملخص الصبح مرة باليوم بالساعة اللي بالإعدادات (بتوقيت القدس)
  *
@@ -11,6 +12,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 import * as webpush from 'jsr:@negrel/webpush@0.5'
 import {
   SESSION_ALERT_STATUSES,
+  clientReplyNotification,
   dailySummaryNotification,
   dueMessagesNotification,
   isSessionAlertDue,
@@ -152,14 +154,47 @@ Deno.serve(async (req) => {
   const { data: settings } = await admin.from('settings').select('*').eq('id', true).single()
   const tz = (settings?.timezone as string | undefined) || 'Asia/Jerusalem'
 
-  // 2) تنبيه قبل بداية كل جلسة (settings.session_alert_minutes، افتراضي 30، و0 = مطفي)
+  // 2) ردود الزبائن من صفحتهم (موافق / بدي أغيّر / ما بقدر أجي). الرد نفسه بينادي الخدمة فوراً
+  //    (trigger على appointment_events)، والمجدول بيعيد المحاولة. ردود أقدم من 6 ساعات ما بتنبعت.
+  let replyAlerts = 0
+  if (subscriptions.length > 0) {
+    const since = new Date(now.getTime() - 6 * 60 * 60_000).toISOString()
+    const { data: replyRows, error: replyError } = await admin
+      .from('appointment_events')
+      .select('id, type, to_status, appointment_id, appointments!inner(starts_at, session_type, clients!inner(full_name))')
+      .eq('actor', 'client')
+      .in('type', ['status_changed', 'slot_taken'])
+      .is('notified_at', null)
+      .gte('created_at', since)
+      .order('created_at')
+    if (replyError) console.error('client replies query failed', replyError.message)
+    for (const row of replyRows ?? []) {
+      const appt = row.appointments as unknown as { starts_at: string; session_type: string; clients: { full_name: string } }
+      const n = clientReplyNotification(
+        { type: row.type as string, to_status: (row.to_status as string | null) ?? null },
+        appt.clients.full_name,
+        new Date(appt.starts_at),
+        tz,
+        appt.session_type,
+      )
+      let sent = 0
+      // tag حسب الموعد: إذا الزبون غيّر رده، الإشعار الجديد بيحل محل القديم على التلفون
+      if (n) sent = await broadcast({ ...n, url: `/appointments/${row.appointment_id}`, tag: `reply-${row.appointment_id}` })
+      if (sent > 0 || !n) {
+        await admin.from('appointment_events').update({ notified_at: nowIso }).eq('id', row.id as string)
+        if (sent > 0) replyAlerts++
+      }
+    }
+  }
+
+  // 3) تنبيه قبل بداية كل جلسة (settings.session_alert_minutes، افتراضي 30، و0 = مطفي)
   const alertMinutes = Number(settings?.session_alert_minutes ?? 30)
   let sessionAlerts = 0
   if (alertMinutes > 0 && subscriptions.length > 0) {
     const windowEnd = new Date(now.getTime() + alertMinutes * 60_000).toISOString()
     const { data: soonRows, error: soonError } = await admin
       .from('appointments')
-      .select('id, starts_at')
+      .select('id, starts_at, session_type')
       .in('status', [...SESSION_ALERT_STATUSES])
       .is('start_alert_sent_at', null)
       .gt('starts_at', nowIso)
@@ -169,7 +204,7 @@ Deno.serve(async (req) => {
     for (const row of soonRows ?? []) {
       const startsAt = new Date(row.starts_at as string)
       if (!isSessionAlertDue(startsAt, now, alertMinutes)) continue
-      const n = sessionStartingNotification(startsAt, now, tz)
+      const n = sessionStartingNotification(startsAt, now, tz, row.session_type as string)
       const sent = await broadcast({ ...n, url: `/appointments/${row.id}`, tag: `session-start-${row.id}` })
       if (sent > 0) {
         await admin.from('appointments').update({ start_alert_sent_at: nowIso }).eq('id', row.id as string)
@@ -178,7 +213,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  // 3) ملخص الصبح
+  // 4) ملخص الصبح
   let summarySent = false
   if (settings) {
     const decision = shouldSendDailySummary(settings, now)
@@ -206,5 +241,5 @@ Deno.serve(async (req) => {
     }
   }
 
-  return json({ ok: true, due: due.length, dueSent, sessionAlerts, summarySent, devices: subscriptions.length })
+  return json({ ok: true, due: due.length, dueSent, replyAlerts, sessionAlerts, summarySent, devices: subscriptions.length })
 })

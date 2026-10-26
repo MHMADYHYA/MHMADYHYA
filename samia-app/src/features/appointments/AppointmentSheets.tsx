@@ -7,13 +7,14 @@ import { Field, Input, Select, Textarea } from '../../components/Input'
 import { Sheet } from '../../components/Sheet'
 import { StatusBadge } from '../../components/StatusBadge'
 import { useInvalidateAll, useUpdateAppointment } from '../../hooks/queries'
-import type { AppointmentStatus, AppointmentWithClient, PaymentMethod, SettingsRow } from '../../lib/database.types'
+import type { AppointmentStatus, AppointmentWithClient, PaymentMethod, SessionType, SettingsRow } from '../../lib/database.types'
 import { combineDateAndTime, dayKey, formatDateTime, splitWallClock } from '../../lib/dates'
 import { toArabicError } from '../../lib/errors'
 import { formatMoney } from '../../lib/payments'
 import { APPOINTMENT_STATUSES, PAYMENT_METHODS, PAYMENT_METHOD_LABELS, STATUS_LABELS } from '../../lib/status'
 import { cancelFlow, rescheduleFlow } from './flows'
 import { TIME_OPTIONS } from './NewAppointmentPage'
+import { SessionPlaceFields } from './SessionPlaceFields'
 
 interface BaseProps {
   appointment: AppointmentWithClient
@@ -28,6 +29,8 @@ export function RescheduleSheet({ appointment: a, settings, open, onClose }: Bas
   const [date, setDate] = useState(initial.date)
   const [time, setTime] = useState(initial.time)
   const [duration, setDuration] = useState(String(a.duration_min))
+  const [sessionType, setSessionType] = useState<SessionType>(a.session_type ?? 'zoom')
+  const [location, setLocation] = useState(a.location ?? '')
   const [error, setError] = useState<string | null>(null)
 
   const mutation = useMutation({
@@ -36,7 +39,7 @@ export function RescheduleSheet({ appointment: a, settings, open, onClose }: Bas
       if (!startsAt) throw new Error('التاريخ أو الساعة مش صالحين')
       const durationMin = Number(duration)
       if (!Number.isInteger(durationMin) || durationMin < 5 || durationMin > 480) throw new Error('المدة لازم تكون بين 5 و480 دقيقة')
-      return rescheduleFlow(a, startsAt, durationMin, settings, new Date())
+      return rescheduleFlow(a, startsAt, durationMin, settings, new Date(), { session_type: sessionType, location })
     },
     onSuccess: (result) => {
       invalidateAll()
@@ -85,8 +88,18 @@ export function RescheduleSheet({ appointment: a, settings, open, onClose }: Bas
         <Field label="المدة (دقايق)" htmlFor="re-duration">
           <Input id="re-duration" type="number" min={5} max={480} step={5} dir="ltr" value={duration} onChange={(e) => setDuration(e.target.value)} />
         </Field>
+        <SessionPlaceFields
+          idPrefix="re"
+          sessionType={sessionType}
+          onSessionTypeChange={setSessionType}
+          location={location}
+          onLocationChange={setLocation}
+          clinicAddress={settings.clinic_address}
+        />
         <SoftNotice tone="primary">
           بعد التغيير الحالة بترجع "بانتظار رد"، وكل الرسائل القديمة غير المبعوتة بتنشال وبتنعمل رسالة تغيير وتذكيرات جديدة.
+          {sessionType !== (a.session_type ?? 'zoom') &&
+            (sessionType === 'in_person' ? ' اجتماع الزوم بينحذف لأنو الجلسة صارت وجاهية.' : ' بينعمل اجتماع زوم جديد للجلسة.')}
         </SoftNotice>
         {error && <ErrorNotice message={error} />}
       </div>

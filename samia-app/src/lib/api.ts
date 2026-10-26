@@ -11,6 +11,7 @@ import type {
   OutboxMessageRow,
   OutboxWithAppointment,
   PushSubscriptionRow,
+  SessionType,
   SettingsRow,
 } from './database.types'
 import { AppError, toArabicError } from './errors'
@@ -149,6 +150,8 @@ export interface CreateAppointmentArgs {
   has_companion: boolean
   companion_name: string | null
   companion_phone: string | null
+  session_type: SessionType
+  location: string | null
   meeting_url: string | null
   zoom_meeting_id: string | null
   price: number | null
@@ -171,6 +174,8 @@ export async function createAppointment(args: CreateAppointmentArgs): Promise<st
     p_admin_notes: args.admin_notes,
     p_public_token: args.public_token,
     p_messages: args.messages as unknown as Json,
+    p_session_type: args.session_type,
+    p_location: args.location,
   })
   if (error) fail(error, 'ما قدرنا نحفظ الموعد')
   return data as string
@@ -180,6 +185,8 @@ export interface RescheduleArgs {
   id: string
   starts_at: Date
   duration_min: number
+  session_type: SessionType
+  location: string | null
   meeting_url: string | null
   zoom_meeting_id: string | null
   messages: OutboxDraft[]
@@ -193,6 +200,8 @@ export async function rescheduleAppointment(args: RescheduleArgs): Promise<void>
     p_meeting_url: args.meeting_url,
     p_zoom_meeting_id: args.zoom_meeting_id,
     p_messages: args.messages as unknown as Json,
+    p_session_type: args.session_type,
+    p_location: args.location,
   })
   if (error) fail(error, 'ما قدرنا نغيّر الموعد')
 }
@@ -318,7 +327,11 @@ export interface PublicAppointment {
   starts_at: string
   duration_min: number
   status: AppointmentRow['status']
+  /** النسخ القديمة من قاعدة البيانات ما بترجعه: معناها زوم */
+  session_type?: SessionType
   meeting_url: string | null
+  /** عنوان الجلسة الوجاهية */
+  location?: string | null
   can_respond: boolean
 }
 

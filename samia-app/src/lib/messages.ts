@@ -2,7 +2,7 @@
  * تجهيز الرسائل (القسم 6 و7): أي رسائل بتنعمل مع كل حدث، ومتى لازم تنبعت.
  * النتيجة بتنبعت لدوال قاعدة البيانات كمصفوفة JSON وبتنحفظ بـ outbox_messages.
  */
-import type { Json, MessageKind, MessageRecipient } from './database.types'
+import type { Json, MessageKind, MessageRecipient, SessionType } from './database.types'
 import { formatDate, formatDayName, formatTime } from './dates'
 import { fillTemplate, resolveTemplates, type TemplateKey, type TemplateVars } from './templates'
 
@@ -23,7 +23,11 @@ export interface MessageSettings {
 
 export interface MessageAppointment {
   starts_at: string | Date
+  /** زوم (افتراضي) أو وجاهي */
+  session_type?: SessionType
   meeting_url: string | null
+  /** عنوان الجلسة الوجاهية */
+  location?: string | null
   public_token: string
   has_companion: boolean
   companion_name: string | null
@@ -55,6 +59,7 @@ export function responseLink(baseUrl: string | null, token: string): string {
 
 export function buildTemplateVars(a: MessageAppointment, c: MessageClient, s: MessageSettings): TemplateVars {
   const previous = a.previous_starts_at ?? null
+  const inPerson = a.session_type === 'in_person'
   return {
     الاسم: firstName(c.full_name),
     اسم_المرافق: a.has_companion ? (a.companion_name ?? '').trim() : '',
@@ -64,7 +69,9 @@ export function buildTemplateVars(a: MessageAppointment, c: MessageClient, s: Me
     اليوم_القديم: previous ? formatDayName(previous) : '',
     التاريخ_القديم: previous ? formatDate(previous) : '',
     الساعة_القديمة: previous ? formatTime(previous) : '',
-    رابط_الجلسة: a.meeting_url ?? '',
+    // سطر الزوم للزوم بس، وسطر المكان للوجاهي بس (السطر الفاضي بينشال لحاله)
+    رابط_الجلسة: inPerson ? '' : (a.meeting_url ?? ''),
+    مكان_الجلسة: inPerson ? (a.location ?? '').trim() : '',
     رابط_الرد: responseLink(s.public_base_url, a.public_token),
     السبب: (a.cancel_reason ?? '').trim(),
   }

@@ -5,7 +5,7 @@ import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { PageTitle } from '../../components/Controls'
 import { ErrorNotice, SoftNotice, Spinner, useToast } from '../../components/Feedback'
-import { BellIcon, DownloadIcon, KeyIcon, LogoutIcon, RefreshIcon, VideoIcon } from '../../components/Icons'
+import { BellIcon, DownloadIcon, KeyIcon, LogoutIcon, MapPinIcon, RefreshIcon, VideoIcon } from '../../components/Icons'
 import { Field, Input, Toggle } from '../../components/Input'
 import { useSettings, useUpdateSettings } from '../../hooks/queries'
 import {
@@ -115,6 +115,33 @@ function PriceSection({ s }: { s: SettingsRow }) {
         </Field>
         <Button type="submit" disabled={busy}>
           احفظ
+        </Button>
+      </form>
+    </Section>
+  )
+}
+
+function ClinicSection({ s }: { s: SettingsRow }) {
+  const { save, busy } = useSaveSettings()
+  const [address, setAddress] = useState(s.clinic_address ?? '')
+  return (
+    <Section
+      title="عنوان الجلسات الوجاهية"
+      icon={<MapPinIcon />}
+      description='بيتعبى لحاله بكل جلسة وجاهية جديدة، وبيوصل للزبون بالرسالة بدل رابط الزوم. بتقدري تغيّريه لموعد معيّن.'
+    >
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          save({ clinic_address: address.trim() || null })
+        }}
+        className="space-y-2"
+      >
+        <Field label="عنوان العيادة" htmlFor="st-clinic-address" hint="مثلاً: شارع الجليل 12، الطابق الثاني، الناصرة">
+          <Input id="st-clinic-address" value={address} onChange={(e) => setAddress(e.target.value)} />
+        </Field>
+        <Button type="submit" disabled={busy}>
+          احفظ العنوان
         </Button>
       </form>
     </Section>
@@ -461,6 +488,7 @@ export function SettingsPage() {
       </Section>
       <TimingSection key={`timing-${s.updated_at}`} s={s} />
       <PriceSection key={`price-${s.updated_at}`} s={s} />
+      <ClinicSection key={`clinic-${s.updated_at}`} s={s} />
       <ZoomSection key={`zoom-${s.updated_at}`} s={s} />
       <PushSection />
       <SummarySection key={`summary-${s.updated_at}`} s={s} />

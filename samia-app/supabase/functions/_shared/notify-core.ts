@@ -180,11 +180,77 @@ export function isSessionAlertDue(startsAt: Date, now: Date, alertMinutes: numbe
   return start > now.getTime() && start - alertMinutes * 60_000 <= now.getTime()
 }
 
-/** "عندك جلسة الساعة 16:00، بعد نص ساعة." (بدون اسم الزبون، عشان الخصوصية على شاشة القفل) */
-export function sessionStartingNotification(startsAt: Date, now: Date, timeZone: string): { title: string; body: string } {
+export type SessionType = 'zoom' | 'in_person'
+
+/** "جلسة زوم" / "جلسة وجاهية" */
+export function sessionLabel(sessionType?: SessionType | string | null): string {
+  if (sessionType === 'in_person') return 'جلسة وجاهية'
+  if (sessionType === 'zoom') return 'جلسة زوم'
+  return 'جلسة'
+}
+
+/**
+ * "عندك جلسة وجاهية الساعة 16:00، بعد نص ساعة." (بدون اسم الزبون، عشان الخصوصية على شاشة القفل)
+ */
+export function sessionStartingNotification(
+  startsAt: Date,
+  now: Date,
+  timeZone: string,
+  sessionType?: SessionType | string | null,
+): { title: string; body: string } {
   const minutes = (startsAt.getTime() - now.getTime()) / 60_000
   return {
     title: 'جلسة قريبة',
-    body: `عندك جلسة الساعة ${localTimeText(startsAt, timeZone)}، بعد ${minutesUntilText(minutes)}.`,
+    body: `عندك ${sessionLabel(sessionType)} الساعة ${localTimeText(startsAt, timeZone)}، بعد ${minutesUntilText(minutes)}.`,
   }
+}
+
+// -----------------------------------------------------------------------------
+// إشعار لما الزبون يرد من صفحته (موافق / بدي أغيّر / ما بقدر أجي)
+// -----------------------------------------------------------------------------
+
+/** نفس أسماء الأيام اللي بالتطبيق (src/lib/dates.ts) */
+const ARABIC_DAY_NAMES = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'] as const
+
+/** "الثلاثاء 28/10" بالتوقيت المحلي */
+export function localDayAndDateText(at: Date, timeZone: string): string {
+  const p = partsIn(at, timeZone)
+  const weekday = new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay()
+  return `${ARABIC_DAY_NAMES[weekday]} ${String(p.day).padStart(2, '0')}/${String(p.month).padStart(2, '0')}`
+}
+
+export interface ClientReplyEvent {
+  /** status_changed أو slot_taken */
+  type: string
+  to_status: string | null
+}
+
+/** نفس كلام الأزرار اللي الزبون كبسها، فما بيحتاج تذكير ولا تأنيث */
+const REPLY_TEXT: Record<string, { title: string; phrase: string }> = {
+  confirmed: { title: 'تأكيد جلسة', phrase: 'موافق' },
+  change_requested: { title: 'طلب تغيير موعد', phrase: 'بدي أغيّر الموعد' },
+  declined: { title: 'اعتذار عن جلسة', phrase: 'ما بقدر أجي' },
+}
+
+/**
+ * "ليلى: موافق. جلسة زوم الثلاثاء 28/10 الساعة 16:00."
+ * الاسم الأول بس (سامية اختارت يبيّن)، وملاحظة الزبون ما بتطلع بالإشعار.
+ * بيرجع null لأحداث مش ردود.
+ */
+export function clientReplyNotification(
+  event: ClientReplyEvent,
+  clientFullName: string,
+  startsAt: Date,
+  timeZone: string,
+  sessionType?: SessionType | string | null,
+): { title: string; body: string } | null {
+  const first = clientFullName.trim().split(/\s+/)[0] || 'زبون'
+  const when = `${sessionLabel(sessionType)} ${localDayAndDateText(startsAt, timeZone)} الساعة ${localTimeText(startsAt, timeZone)}`
+  if (event.type === 'slot_taken') {
+    return { title: 'الوقت انحجز', body: `${first}: موافق، بس الوقت صار محجوز لحدا ثاني. ${when}.` }
+  }
+  if (event.type !== 'status_changed' || !event.to_status) return null
+  const text = REPLY_TEXT[event.to_status]
+  if (!text) return null
+  return { title: text.title, body: `${first}: ${text.phrase}. ${when}.` }
 }

@@ -237,3 +237,9 @@ export const ShareIcon = (p: IconProps) => (
     <path d="M5 13v5.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V13" />
   </IconBase>
 )
+export const MapPinIcon = (p: IconProps) => (
+  <IconBase {...p}>
+    <path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" />
+    <circle cx="12" cy="10" r="2.4" />
+  </IconBase>
+)

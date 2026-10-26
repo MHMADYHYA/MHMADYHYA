@@ -11,6 +11,7 @@ import {
   CoinsIcon,
   CopyIcon,
   ExternalLinkIcon,
+  MapPinIcon,
   MessageIcon,
   NoteIcon,
   PhoneIcon,
@@ -29,6 +30,7 @@ import { toArabicError } from '../../lib/errors'
 import { firstName as firstNameOf } from '../../lib/messages'
 import { formatMoney } from '../../lib/payments'
 import { formatPhoneForDisplay } from '../../lib/phone'
+import { mapsUrl } from '../../lib/place'
 import {
   ACTOR_LABELS,
   EVENT_TYPE_LABELS,
@@ -228,6 +230,21 @@ export function AppointmentDetailsPage() {
             )}
           </InfoRow>
         )}
+        {a.session_type === 'in_person' ? (
+          <InfoRow label="جلسة وجاهية" icon={<MapPinIcon />}>
+            {a.location ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span>{a.location}</span>
+                <a href={mapsUrl(a.location)} target="_blank" rel="noopener" className="inline-flex min-h-9 items-center gap-1 text-sm font-semibold text-primary">
+                  الخريطة
+                  <ExternalLinkIcon width="16" height="16" />
+                </a>
+              </div>
+            ) : (
+              <span className="text-muted">ما في عنوان</span>
+            )}
+          </InfoRow>
+        ) : (
         <InfoRow label="رابط الجلسة (زوم)" icon={<VideoIcon />}>
           {a.meeting_url && a.status !== 'cancelled' ? (
             <div className="flex flex-wrap items-center gap-2">
@@ -244,6 +261,7 @@ export function AppointmentDetailsPage() {
             <span className="text-muted">{a.status === 'cancelled' ? 'انحذف مع الإلغاء' : 'ما في رابط'}</span>
           )}
         </InfoRow>
+        )}
         {a.responded_at && (
           <InfoRow label="آخر رد من الزبون">
             {timeAgoLabel(a.responded_at, now)} ({formatDateTime(a.responded_at)})

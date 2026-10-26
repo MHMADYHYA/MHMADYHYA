@@ -2,11 +2,12 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useParams } from 'react-router'
 import { ButterflyMark } from '../../components/ButterflyMark'
-import { ExternalLinkIcon, LockIcon } from '../../components/Icons'
+import { ExternalLinkIcon, LockIcon, MapPinIcon } from '../../components/Icons'
 import { Textarea } from '../../components/Input'
 import { getPublicAppointment, respondToAppointment, type PublicAppointment } from '../../lib/api'
 import { ARABIC_MONTH_NAMES, durationLabel, formatDate, formatDayName, formatTime, toAppTime } from '../../lib/dates'
 import { toArabicError } from '../../lib/errors'
+import { mapsUrl } from '../../lib/place'
 import { isSupabaseConfigured } from '../../lib/supabase'
 import type { ClientAction } from '../../lib/transitions'
 
@@ -117,6 +118,8 @@ export function PublicAppointmentPage() {
     )
   }
 
+  const inPerson = info.session_type === 'in_person'
+
   const respondError =
     respond.data && !respond.data.ok
       ? respond.data.error === 'expired'
@@ -140,17 +143,31 @@ export function PublicAppointmentPage() {
         <p className="text-ink">
           الساعة <span dir="ltr">{formatTime(info.starts_at)}</span> · {durationLabel(info.duration_min)}
         </p>
-        <p className="text-sm text-muted">جلسة أونلاين بالزوم</p>
+        {inPerson ? (
+          <p className="text-sm text-muted">
+            جلسة وجاهية{info.location ? <>: <span className="text-ink">{info.location}</span></> : null}
+          </p>
+        ) : (
+          <p className="text-sm text-muted">جلسة أونلاين بالزوم</p>
+        )}
       </div>
     </div>
   )
 
-  const zoomButton = info.meeting_url && (
-    <a href={info.meeting_url} target="_blank" rel="noopener" className={`${BIG_BUTTON} bg-primary-soft text-primary hover:bg-[#D6E5EA]`}>
-      دخول للجلسة (زوم)
-      <ExternalLinkIcon className="ms-2" width="18" height="18" />
-    </a>
-  )
+  // للزوم: زر الدخول للجلسة. للوجاهي: زر الخريطة للعنوان
+  const zoomButton = inPerson
+    ? info.location && (
+        <a href={mapsUrl(info.location)} target="_blank" rel="noopener" className={`${BIG_BUTTON} bg-primary-soft text-primary hover:bg-[#D6E5EA]`}>
+          افتح العنوان بالخريطة
+          <MapPinIcon className="ms-2" width="18" height="18" />
+        </a>
+      )
+    : info.meeting_url && (
+        <a href={info.meeting_url} target="_blank" rel="noopener" className={`${BIG_BUTTON} bg-primary-soft text-primary hover:bg-[#D6E5EA]`}>
+          دخول للجلسة (زوم)
+          <ExternalLinkIcon className="ms-2" width="18" height="18" />
+        </a>
+      )
 
   const changeLink = (
     <button

@@ -53,6 +53,8 @@ export function createMockDb() {
       payment_method: null,
       paid_at: null,
       start_alert_sent_at: null,
+      session_type: 'zoom',
+      location: null,
       created_at: now,
       updated_at: now,
       ...partial,
@@ -124,6 +126,7 @@ export function createMockDb() {
     daily_summary_time: '08:00:00',
     daily_summary_last_sent_on: null,
     session_alert_minutes: 30,
+    clinic_address: 'شارع الجليل 12، الناصرة',
     timezone: 'Asia/Jerusalem',
     updated_at: now,
   }
